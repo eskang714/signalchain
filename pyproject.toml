@@ -1,0 +1,37 @@
+[project]
+name = "signal-chain"
+version = "0.1.0"
+description = "Desktop LLM chat application supporting Claude API, Ollama, and local GGUF models"
+readme = "README.md"
+authors = [
+    { name = "eskang714", email = "eskang7@icloud.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pyqt6",
+    "anthropic",
+    "ollama",
+    "keyring",
+    "pyyaml",
+    "psutil",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-qt",
+    "pytest-mock",
+    "pytest-cov",
+    "ruff",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
