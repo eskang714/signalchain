@@ -5,7 +5,6 @@ TC-02: Valid Config
 TC-03: Invalid Config – Missing Path
 TC-04: Low Disk Space
 """
-import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,7 +15,6 @@ import yaml
 pytest.importorskip("signal_chain.models.config")
 pytest.importorskip("signal_chain.viewmodels.startup")
 
-from signal_chain.models.config import AppConfig  # noqa: E402
 from signal_chain.viewmodels.startup import StartupViewModel  # noqa: E402
 
 
@@ -160,7 +158,7 @@ class TestTC03InvalidConfigMissingPath:
 
         assert not main_fired, "main_ready must not fire while a fix is still pending"
 
-    def test_missing_paths_are_reported(self, config_missing_dir, tmp_path, qtbot):
+    def test_missing_paths_are_reported(self, config_missing_dir, qtbot):
         vm = StartupViewModel()
         vm.startup(config_missing_dir)
 
