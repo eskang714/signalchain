@@ -68,6 +68,13 @@ class BaseModule(ABC):
 - Tests: pytest
 - CI: GitHub Actions (.github/workflows/ci.yml)
 
+## Commit & Attribution Convention
+- Commits use conventional commit format (feat, fix, test, docs, refactor, chore, ci)
+- Do NOT add Co-Authored-By trailers to commit messages
+- Attribution for AI-assisted commits goes in the PR comment, not the commit body
+- Squash merge uses the PR title (conventional format) as the commit title
+- One ticket, one task, one branch
+
 ## What to Flag Rather Than Decide
 If you encounter an architectural question not answered here, stop and flag it.
 Do not make unilateral architectural decisions.
