@@ -5,8 +5,11 @@ TC-02: Valid Config
 TC-03: Invalid Config – Missing Path
 TC-04: Low Disk Space
 """
+from collections import namedtuple
 from pathlib import Path
 from unittest.mock import patch
+
+_DiskUsage = namedtuple("usage", ["total", "used", "free"])
 
 # ---------------------------------------------------------------------------
 # TC-01: Fresh Install
@@ -171,7 +174,7 @@ class TestTC04LowDiskSpace:
         warnings: list[int] = []
         vm.disk_warning.connect(lambda free_mb: warnings.append(free_mb))
 
-        with patch("shutil.disk_usage", return_value=(10**9, 9 * 10**8, self._LOW_FREE_BYTES)):
+        with patch("shutil.disk_usage", return_value=_DiskUsage(10**9, 9 * 10**8, self._LOW_FREE_BYTES)):
             vm.startup(tmp_config)
 
         assert warnings, "disk_warning must fire when free space is below 100 MB"
@@ -184,7 +187,7 @@ class TestTC04LowDiskSpace:
         main_fired = []
         vm.main_ready.connect(lambda: main_fired.append(True))
 
-        with patch("shutil.disk_usage", return_value=(10**9, 9 * 10**8, self._LOW_FREE_BYTES)):
+        with patch("shutil.disk_usage", return_value=_DiskUsage(10**9, 9 * 10**8, self._LOW_FREE_BYTES)):
             vm.startup(tmp_config)
 
         assert main_fired, "main_ready must still fire when disk space is low (warning, not block)"
@@ -196,7 +199,7 @@ class TestTC04LowDiskSpace:
         warnings: list[int] = []
         vm.disk_warning.connect(lambda free_mb: warnings.append(free_mb))
 
-        with patch("shutil.disk_usage", return_value=(10**9, 5 * 10**8, self._HIGH_FREE_BYTES)):
+        with patch("shutil.disk_usage", return_value=_DiskUsage(10**9, 5 * 10**8, self._HIGH_FREE_BYTES)):
             vm.startup(tmp_config)
 
         assert not warnings, "disk_warning must not fire when free space is >= 100 MB"

@@ -39,9 +39,7 @@ class StartupViewModel(QObject):
             self.fix_dialog_required.emit()
             return
 
-        # Index access [2] works with both real namedtuple and the plain tuple the
-        # test mock returns; .free would AttributeError on a plain tuple.
-        free_bytes = shutil.disk_usage(self._config.output_dir)[2]
+        free_bytes = shutil.disk_usage(self._config.output_dir).free
         free_mb = free_bytes // (1024 * 1024)
         if free_mb < _DISK_WARN_MB:
             self.disk_warning.emit(free_mb)
