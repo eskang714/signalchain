@@ -8,14 +8,6 @@ TC-19: Three Simultaneous Providers Under Load
 """
 import time
 
-import pytest
-
-_xfail = pytest.mark.xfail(
-    reason="Not yet implemented - TDD red phase",
-    strict=True,
-)
-
-
 # ---------------------------------------------------------------------------
 # Module-local mock providers
 #
@@ -107,7 +99,6 @@ def _make_providers():
 class TestTC15MultipleSimultaneousConversations:
     """Two chats generate concurrently; UI stays responsive; no tokens from chat 1 are lost."""
 
-    @_xfail
     def test_two_conversations_generating_at_the_same_time(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -121,7 +112,6 @@ class TestTC15MultipleSimultaneousConversations:
         assert vm1.is_generating, "Chat 1 must still be generating"
         assert vm2.is_generating, "Chat 2 must also be generating simultaneously"
 
-    @_xfail
     def test_ui_thread_not_blocked_during_dual_generation(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -141,7 +131,6 @@ class TestTC15MultipleSimultaneousConversations:
             "generation workers must run on separate QThreads"
         )
 
-    @_xfail
     def test_all_chat1_tokens_received_while_chat2_runs(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -178,7 +167,6 @@ class TestTC15MultipleSimultaneousConversations:
 class TestTC16BackgroundGenerationContinuity:
     """Chat 1 completes fully in the background while the user views Chat 2."""
 
-    @_xfail
     def test_background_generation_receives_all_tokens(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -205,7 +193,6 @@ class TestTC16BackgroundGenerationContinuity:
             f"expected {tokens}, got {received}"
         )
 
-    @_xfail
     def test_switching_back_shows_completed_response(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -236,7 +223,6 @@ class TestTC16BackgroundGenerationContinuity:
 class TestTC17WorkerThreadCrashIsolation:
     """A crash in Chat 1's worker thread must not affect the UI, Chat 2, or Chat 3."""
 
-    @_xfail
     def test_ui_thread_remains_responsive_after_crash(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, CrashingProvider, _ = _make_providers()
@@ -254,7 +240,6 @@ class TestTC17WorkerThreadCrashIsolation:
             f"UI thread appears frozen after worker crash ({elapsed:.2f}s for 100 ms wait)"
         )
 
-    @_xfail
     def test_other_conversations_unaffected_by_crash(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, CrashingProvider, _ = _make_providers()
@@ -275,7 +260,6 @@ class TestTC17WorkerThreadCrashIsolation:
         assert vm2.response_text, "Chat 2 must complete normally after Chat 1 crashes"
         assert vm3.response_text, "Chat 3 must complete normally after Chat 1 crashes"
 
-    @_xfail
     def test_crashed_conversation_shows_recoverable_error_state(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         _, CrashingProvider, __ = _make_providers()
@@ -299,7 +283,6 @@ class TestTC17WorkerThreadCrashIsolation:
 class TestTC18ConcurrentMessageSend:
     """Sending a second message before the first completes: defined behavior, no dual generation."""
 
-    @_xfail
     def test_first_send_returns_sent(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -308,7 +291,6 @@ class TestTC18ConcurrentMessageSend:
         result = vm.send_message("First message")
         assert result == "sent"
 
-    @_xfail
     def test_second_send_during_generation_returns_defined_result(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, __ = _make_providers()
@@ -324,7 +306,6 @@ class TestTC18ConcurrentMessageSend:
             f"'cancelled_and_replaced', got {result!r}"
         )
 
-    @_xfail
     def test_at_most_one_generation_active_at_a_time(self, qtbot):
         """generation_started and generation_complete must stay balanced at <= 1 active."""
         from signal_chain.viewmodels.conversation import ConversationViewModel
@@ -364,7 +345,6 @@ class TestTC18ConcurrentMessageSend:
 class TestTC19ThreeProvidersUnderLoad:
     """Claude API mid-stream failure: Ollama and local GGUF chats continue unaffected."""
 
-    @_xfail
     def test_other_chats_complete_when_claude_api_fails(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, MidStreamErrorProvider = _make_providers()
@@ -390,7 +370,6 @@ class TestTC19ThreeProvidersUnderLoad:
         assert vm_ollama.response_text, "Ollama chat must complete despite Claude API error"
         assert vm_local.response_text, "Local GGUF chat must complete despite Claude API error"
 
-    @_xfail
     def test_partial_response_preserved_on_mid_stream_failure(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         _, __, MidStreamErrorProvider = _make_providers()
@@ -414,7 +393,6 @@ class TestTC19ThreeProvidersUnderLoad:
                 "Partial tokens received before the mid-stream error must be saved to response_text"
             )
 
-    @_xfail
     def test_ui_responsive_during_three_provider_load(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
         SlowProvider, _, MidStreamErrorProvider = _make_providers()
