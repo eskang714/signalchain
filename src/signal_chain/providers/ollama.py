@@ -20,19 +20,7 @@ class OllamaProvider(BaseProvider):
                 f"Ollama is not running or not reachable: {exc}"
             ) from exc
 
-        if hasattr(response, "models"):
-            raw_models = response.models
-        else:
-            raw_models = response.get("models", [])
-
-        result = []
-        for m in raw_models:
-            if isinstance(m, dict):
-                name = m.get("name", "")
-            else:
-                name = getattr(m, "model", "") or getattr(m, "name", "")
-            result.append(ModelInfo(id=name, name=name))
-        return result
+        return [ModelInfo(id=m.model, name=m.model) for m in response.models]
 
     def load_model(self, model_id: str) -> None:
         self._model_id = model_id

@@ -3,6 +3,7 @@ Shared fixtures for the Signal Chain acceptance test suite.
 """
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -64,14 +65,14 @@ def mock_ollama():
     running Ollama process.  Returns the mock object so individual tests can
     configure call-specific behaviour (e.g. override generate side effects).
     """
-    known_models = [
-        {"name": "llama3:8b",   "size": 4_800_000_000},
-        {"name": "mistral:7b",  "size": 4_100_000_000},
-        {"name": "phi3:mini",   "size": 2_200_000_000},
+    models = [
+        SimpleNamespace(model="llama3:8b", size=4_800_000_000),
+        SimpleNamespace(model="mistral:7b", size=4_100_000_000),
+        SimpleNamespace(model="phi3:mini",  size=2_200_000_000),
     ]
 
     client = MagicMock()
-    client.list.return_value = {"models": known_models}
+    client.list.return_value = SimpleNamespace(models=models)
     client.generate.return_value = iter(
         [{"response": tok, "done": False} for tok in ["Hello", " ", "world"]]
         + [{"response": "", "done": True}]
