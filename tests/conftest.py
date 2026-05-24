@@ -152,6 +152,39 @@ def sample_conversation(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
+def large_conversation(tmp_path: Path) -> Path:
+    """
+    A well-formed conversation file with 1000 messages for scale tests (TC-14).
+
+    Message content is varied so search tests have something to match against.
+    """
+    messages = [
+        {
+            "id": f"msg_{i:04d}",
+            "role": "user" if i % 2 == 0 else "assistant",
+            "content": f"Scale test message number {i}. " + ("filler text " * 4),
+            "timestamp": f"2026-05-22T{i // 3600:02d}:{(i % 3600) // 60:02d}:{i % 60:02d}Z",
+        }
+        for i in range(1000)
+    ]
+
+    conversation = {
+        "version": "1.0",
+        "id": "large-conversation-001",
+        "title": "Large scale test conversation",
+        "model": "llama3:8b",
+        "created_at": "2026-05-22T00:00:00Z",
+        "messages": messages,
+    }
+
+    conv_dir = tmp_path / "conversations"
+    conv_dir.mkdir(exist_ok=True)
+    conv_file = conv_dir / "large_conversation.json"
+    conv_file.write_text(json.dumps(conversation))
+    return conv_file
+
+
+@pytest.fixture()
 def corrupt_conversation_file(tmp_path: Path) -> Path:
     """
     A malformed JSON file inside a conversations directory.
