@@ -44,13 +44,6 @@ import json
 import time
 from pathlib import Path
 
-import pytest
-
-_xfail = pytest.mark.xfail(
-    reason="conversation persistence not yet implemented - TDD red phase",
-    strict=True,
-)
-
 
 # ---------------------------------------------------------------------------
 # TC-11: New Conversation
@@ -59,7 +52,6 @@ _xfail = pytest.mark.xfail(
 class TestTC11NewConversation:
     """Creating a new conversation produces a valid blank object that can be persisted."""
 
-    @_xfail
     def test_new_conversation_has_required_schema_fields(self):
         from signal_chain.models.conversation import Conversation
 
@@ -73,7 +65,6 @@ class TestTC11NewConversation:
         assert conv.model.provider, "model.provider must be set"
         assert conv.model.model_id, "model.model_id must be set"
 
-    @_xfail
     def test_new_conversation_version_is_1_0(self):
         from signal_chain.models.conversation import Conversation
 
@@ -83,7 +74,6 @@ class TestTC11NewConversation:
             "Version field must be '1.0' — required for the migration framework"
         )
 
-    @_xfail
     def test_new_conversation_starts_with_no_messages(self):
         from signal_chain.models.conversation import Conversation
 
@@ -93,7 +83,6 @@ class TestTC11NewConversation:
             "A newly created conversation must have an empty message list"
         )
 
-    @_xfail
     def test_new_conversation_ids_are_unique(self):
         from signal_chain.models.conversation import Conversation
 
@@ -104,7 +93,6 @@ class TestTC11NewConversation:
             "Each new conversation must receive a distinct conversation_id"
         )
 
-    @_xfail
     def test_saved_conversation_appears_in_load_all(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
@@ -128,7 +116,6 @@ class TestTC11NewConversation:
 class TestTC12ConversationPersistence:
     """Conversations survive a save → reload cycle with all fields intact."""
 
-    @_xfail
     def test_saved_json_has_required_top_level_keys(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
@@ -144,7 +131,6 @@ class TestTC12ConversationPersistence:
                 f"Saved JSON must contain '{key}' — required by the locked schema"
             )
 
-    @_xfail
     def test_saved_json_has_nested_model_object(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
@@ -161,7 +147,6 @@ class TestTC12ConversationPersistence:
         assert raw["model"]["provider"] == "ollama"
         assert raw["model"]["model_id"] == "mistral:7b"
 
-    @_xfail
     def test_saved_json_has_metadata_wrapper(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
@@ -177,7 +162,6 @@ class TestTC12ConversationPersistence:
         assert "tags" in raw["metadata"]
         assert "module_usage" in raw["metadata"]
 
-    @_xfail
     def test_messages_intact_after_save_and_reload(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
@@ -197,7 +181,6 @@ class TestTC12ConversationPersistence:
         assert reloaded.messages[0].content == "What is the capital of France?"
         assert reloaded.messages[1].content == "The capital of France is Paris."
 
-    @_xfail
     def test_model_selection_preserved_after_reload(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
@@ -216,7 +199,6 @@ class TestTC12ConversationPersistence:
             "model.model_id must be preserved across application restarts"
         )
 
-    @_xfail
     def test_load_from_sample_conversation_fixture(self, sample_conversation):
         """Loader must handle a well-formed conversation file produced by conftest."""
         from signal_chain.models.conversation import ConversationLoader
@@ -231,7 +213,6 @@ class TestTC12ConversationPersistence:
         assert conv.metadata.title == "Sample conversation"
         assert len(conv.messages) == 20, "All 20 messages from the fixture must be loaded"
 
-    @_xfail
     def test_message_roles_preserved_after_reload(self, sample_conversation):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -274,7 +255,6 @@ class TestTC13ConversationSearch:
         }
         (conv_dir / f"{conv_id}.json").write_text(json.dumps(data))
 
-    @_xfail
     def test_search_returns_only_matching_conversations(self, tmp_path):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -293,7 +273,6 @@ class TestTC13ConversationSearch:
             "Search must return the conversation whose title matches the query"
         )
 
-    @_xfail
     def test_search_matches_message_content(self, tmp_path):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -309,7 +288,6 @@ class TestTC13ConversationSearch:
             "Search must match against message content, not just metadata.title"
         )
 
-    @_xfail
     def test_search_with_no_match_returns_empty_list(self, tmp_path):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -323,7 +301,6 @@ class TestTC13ConversationSearch:
             "Search with no matching conversations must return an empty list, not raise"
         )
 
-    @_xfail
     def test_empty_query_returns_all_conversations(self, tmp_path):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -347,7 +324,6 @@ class TestTC13ConversationSearch:
 class TestTC14ConversationScale:
     """Model-layer load and search over a 1000-message conversation must complete within time bounds."""
 
-    @_xfail
     def test_large_conversation_loads_without_error(self, large_conversation):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -357,7 +333,6 @@ class TestTC14ConversationScale:
             "All 1000 messages must load without error or truncation"
         )
 
-    @_xfail
     def test_large_conversation_load_completes_under_3_seconds(self, large_conversation):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -369,7 +344,6 @@ class TestTC14ConversationScale:
             f"Loading a 1000-message conversation must complete in under 3 s; took {elapsed:.2f} s"
         )
 
-    @_xfail
     def test_search_over_large_conversation_completes_under_2_seconds(self, large_conversation):
         from signal_chain.models.conversation import ConversationLoader
 
