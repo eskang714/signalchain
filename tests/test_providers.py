@@ -37,7 +37,6 @@ _KNOWN_MODELS = ["llama3:8b", "mistral:7b", "phi3:mini"]
 class TestTC20OllamaAutoDiscovery:
     """list_models() returns every model from ollama.list(); no auth or manual config needed."""
 
-    @_xfail
     def test_all_ollama_models_appear_in_list(self, mock_ollama):
         from signal_chain.providers.ollama import OllamaProvider
 
@@ -49,7 +48,6 @@ class TestTC20OllamaAutoDiscovery:
             f"ollama.list(); got {len(models)}"
         )
 
-    @_xfail
     def test_model_ids_match_ollama_names(self, mock_ollama):
         from signal_chain.providers.ollama import OllamaProvider
 
@@ -61,7 +59,6 @@ class TestTC20OllamaAutoDiscovery:
                 f"Model '{expected_id}' reported by ollama.list() must appear in list_models()"
             )
 
-    @_xfail
     def test_list_models_returns_model_info_instances(self, mock_ollama):
         from signal_chain.providers.base import ModelInfo
         from signal_chain.providers.ollama import OllamaProvider
@@ -74,7 +71,6 @@ class TestTC20OllamaAutoDiscovery:
             "Every item returned by list_models must be a ModelInfo instance"
         )
 
-    @_xfail
     def test_discovery_requires_no_manual_configuration(self, mock_ollama):
         """Default constructor (no args) must work — Ollama needs no auth."""
         from signal_chain.providers.ollama import OllamaProvider
@@ -87,7 +83,6 @@ class TestTC20OllamaAutoDiscovery:
             "OllamaProvider() with no arguments must discover models automatically"
         )
 
-    @_xfail
     def test_validate_config_true_when_ollama_running(self, mock_ollama):
         from signal_chain.providers.ollama import OllamaProvider
 
@@ -106,7 +101,6 @@ class TestTC21OllamaNotRunning:
     """When Ollama is unreachable: validate_config returns False, list_models raises
     a clear exception with an actionable message; no crash or silent failure."""
 
-    @_xfail
     def test_validate_config_returns_false_not_raises(self):
         from signal_chain.providers.ollama import OllamaProvider
 
@@ -121,7 +115,6 @@ class TestTC21OllamaNotRunning:
             "validate_config must return False (not raise) when Ollama is not running"
         )
 
-    @_xfail
     def test_list_models_raises_not_silent_when_not_running(self):
         from signal_chain.providers.ollama import OllamaProvider
 
@@ -134,7 +127,6 @@ class TestTC21OllamaNotRunning:
                 provider.list_models()
             # Reaching here means an exception was raised — no silent empty list.
 
-    @_xfail
     def test_error_message_names_ollama(self):
         """The raised exception must mention Ollama so the user knows what to fix."""
         from signal_chain.providers.ollama import OllamaProvider
@@ -153,7 +145,6 @@ class TestTC21OllamaNotRunning:
             f"Error message must mention 'Ollama' to be actionable, got: {message!r}"
         )
 
-    @_xfail
     def test_validate_config_handles_os_error_without_crashing(self):
         """OSError (e.g. service not installed) must not propagate unhandled."""
         from signal_chain.providers.ollama import OllamaProvider
