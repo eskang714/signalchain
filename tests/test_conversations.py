@@ -9,11 +9,21 @@ Target modules (not yet implemented):
   signal_chain.models.conversation.Conversation
   signal_chain.models.conversation.ConversationLoader
 
+Locked schema (from Signal_Chain_Project_Brief.md):
+  {
+    "version": "1.0",
+    "schema": "conversation.v1",
+    "conversation_id": "conv_<unique>",
+    "created": "<ISO8601>",
+    "model": {"provider": "...", "model_id": "..."},
+    "messages": [{"id": "...", "role": "...", "content": "...", "timestamp": "..."}],
+    "metadata": {"title": "...", "tags": [], "module_usage": {}}
+  }
+
 FLAG TC-11 (partial): "model selection dialog appears grouped by provider" is a
   ViewModel/View concern.  It requires a running QApplication and a populated
   provider registry — not testable at the model/persistence layer in isolation.
-  Tests below cover the underlying conversation creation contract (required fields,
-  blank message list, persistence) only.
+  Tests below cover the underlying conversation creation contract only.
   Options:
     A) Add ViewModel-layer tests once ConversationListViewModel exists
     B) Accept provider grouping is covered by manual acceptance testing
@@ -29,13 +39,6 @@ FLAG TC-14 (partial): "conversation list renders without freeze" is a PyQt6 widg
        which already confirm the UI thread stays responsive.
     B) Add a Qt-rendered stress test if a GUI-under-load harness is added later.
   Recommendation: Option A.  Waiting for human decision.
-
-Schema note: conftest.sample_conversation uses a simplified schema (flat fields:
-  id, version, title, model as string, created_at, messages).
-  Signal_Chain_Project_Brief.md describes a richer schema (nested model object,
-  metadata wrapper, conversation_id, created).  Builder must resolve before
-  implementing the loader; tests below use the conftest schema as the working
-  contract and will be updated once the schema is locked.
 """
 import json
 import time
@@ -60,17 +63,21 @@ class TestTC11NewConversation:
     def test_new_conversation_has_required_schema_fields(self):
         from signal_chain.models.conversation import Conversation
 
-        conv = Conversation.create(model="claude-sonnet-4-6")
+        conv = Conversation.create(provider="claude", model_id="claude-sonnet-4-6")
 
-        assert conv.id, "New conversation must have a non-empty id"
+        assert conv.conversation_id, "New conversation must have a non-empty conversation_id"
         assert conv.version, "New conversation must have a version field"
-        assert conv.model, "New conversation must record the model it was created with"
+        assert conv.schema == "conversation.v1", (
+            "New conversation must carry schema='conversation.v1'"
+        )
+        assert conv.model.provider, "model.provider must be set"
+        assert conv.model.model_id, "model.model_id must be set"
 
     @_xfail
     def test_new_conversation_version_is_1_0(self):
         from signal_chain.models.conversation import Conversation
 
-        conv = Conversation.create(model="claude-sonnet-4-6")
+        conv = Conversation.create(provider="claude", model_id="claude-sonnet-4-6")
 
         assert conv.version == "1.0", (
             "Version field must be '1.0' — required for the migration framework"
@@ -80,7 +87,7 @@ class TestTC11NewConversation:
     def test_new_conversation_starts_with_no_messages(self):
         from signal_chain.models.conversation import Conversation
 
-        conv = Conversation.create(model="llama3:8b")
+        conv = Conversation.create(provider="ollama", model_id="llama3:8b")
 
         assert conv.messages == [], (
             "A newly created conversation must have an empty message list"
@@ -90,11 +97,11 @@ class TestTC11NewConversation:
     def test_new_conversation_ids_are_unique(self):
         from signal_chain.models.conversation import Conversation
 
-        conv_a = Conversation.create(model="llama3:8b")
-        conv_b = Conversation.create(model="llama3:8b")
+        conv_a = Conversation.create(provider="ollama", model_id="llama3:8b")
+        conv_b = Conversation.create(provider="ollama", model_id="llama3:8b")
 
-        assert conv_a.id != conv_b.id, (
-            "Each new conversation must receive a distinct id"
+        assert conv_a.conversation_id != conv_b.conversation_id, (
+            "Each new conversation must receive a distinct conversation_id"
         )
 
     @_xfail
@@ -104,13 +111,12 @@ class TestTC11NewConversation:
         conv_dir = tmp_path / "conversations"
         conv_dir.mkdir()
 
-        conv = Conversation.create(model="claude-sonnet-4-6")
+        conv = Conversation.create(provider="claude", model_id="claude-sonnet-4-6")
         ConversationLoader.save(conv, conv_dir)
 
-        loaded = ConversationLoader.load_all(conv_dir)
-        loaded_ids = [c.id for c in loaded]
+        loaded_ids = [c.conversation_id for c in ConversationLoader.load_all(conv_dir)]
 
-        assert conv.id in loaded_ids, (
+        assert conv.conversation_id in loaded_ids, (
             "A conversation saved via ConversationLoader.save() must appear in load_all()"
         )
 
@@ -123,19 +129,53 @@ class TestTC12ConversationPersistence:
     """Conversations survive a save → reload cycle with all fields intact."""
 
     @_xfail
-    def test_saved_json_contains_version_field(self, tmp_path):
+    def test_saved_json_has_required_top_level_keys(self, tmp_path):
         from signal_chain.models.conversation import Conversation, ConversationLoader
 
         conv_dir = tmp_path / "conversations"
         conv_dir.mkdir()
 
-        conv = Conversation.create(model="claude-sonnet-4-6")
+        conv = Conversation.create(provider="claude", model_id="claude-sonnet-4-6")
         saved_path = ConversationLoader.save(conv, conv_dir)
 
         raw = json.loads(saved_path.read_text())
-        assert "version" in raw, (
-            "Saved JSON must contain a 'version' field — required by the data versioning contract"
+        for key in ("version", "schema", "conversation_id", "created", "model", "metadata"):
+            assert key in raw, (
+                f"Saved JSON must contain '{key}' — required by the locked schema"
+            )
+
+    @_xfail
+    def test_saved_json_has_nested_model_object(self, tmp_path):
+        from signal_chain.models.conversation import Conversation, ConversationLoader
+
+        conv_dir = tmp_path / "conversations"
+        conv_dir.mkdir()
+
+        conv = Conversation.create(provider="ollama", model_id="mistral:7b")
+        saved_path = ConversationLoader.save(conv, conv_dir)
+
+        raw = json.loads(saved_path.read_text())
+        assert isinstance(raw["model"], dict), (
+            "model field must be a JSON object, not a plain string"
         )
+        assert raw["model"]["provider"] == "ollama"
+        assert raw["model"]["model_id"] == "mistral:7b"
+
+    @_xfail
+    def test_saved_json_has_metadata_wrapper(self, tmp_path):
+        from signal_chain.models.conversation import Conversation, ConversationLoader
+
+        conv_dir = tmp_path / "conversations"
+        conv_dir.mkdir()
+
+        conv = Conversation.create(provider="ollama", model_id="llama3:8b")
+        saved_path = ConversationLoader.save(conv, conv_dir)
+
+        raw = json.loads(saved_path.read_text())
+        assert isinstance(raw["metadata"], dict), "metadata must be a JSON object"
+        assert "title" in raw["metadata"]
+        assert "tags" in raw["metadata"]
+        assert "module_usage" in raw["metadata"]
 
     @_xfail
     def test_messages_intact_after_save_and_reload(self, tmp_path):
@@ -144,7 +184,7 @@ class TestTC12ConversationPersistence:
         conv_dir = tmp_path / "conversations"
         conv_dir.mkdir()
 
-        conv = Conversation.create(model="claude-sonnet-4-6")
+        conv = Conversation.create(provider="claude", model_id="claude-sonnet-4-6")
         conv.add_message(role="user", content="What is the capital of France?")
         conv.add_message(role="assistant", content="The capital of France is Paris.")
         ConversationLoader.save(conv, conv_dir)
@@ -154,12 +194,8 @@ class TestTC12ConversationPersistence:
         assert len(reloaded.messages) == 2, (
             "Message count must be preserved across save/reload"
         )
-        assert reloaded.messages[0].content == "What is the capital of France?", (
-            "First message content must be preserved across save/reload"
-        )
-        assert reloaded.messages[1].content == "The capital of France is Paris.", (
-            "Second message content must be preserved across save/reload"
-        )
+        assert reloaded.messages[0].content == "What is the capital of France?"
+        assert reloaded.messages[1].content == "The capital of France is Paris."
 
     @_xfail
     def test_model_selection_preserved_after_reload(self, tmp_path):
@@ -168,13 +204,16 @@ class TestTC12ConversationPersistence:
         conv_dir = tmp_path / "conversations"
         conv_dir.mkdir()
 
-        conv = Conversation.create(model="mistral:7b")
+        conv = Conversation.create(provider="ollama", model_id="mistral:7b")
         ConversationLoader.save(conv, conv_dir)
 
         reloaded = ConversationLoader.load_all(conv_dir)[0]
 
-        assert reloaded.model == "mistral:7b", (
-            "Model selection must be preserved across application restarts"
+        assert reloaded.model.provider == "ollama", (
+            "model.provider must be preserved across application restarts"
+        )
+        assert reloaded.model.model_id == "mistral:7b", (
+            "model.model_id must be preserved across application restarts"
         )
 
     @_xfail
@@ -184,11 +223,13 @@ class TestTC12ConversationPersistence:
 
         conv = ConversationLoader.load(sample_conversation)
 
-        assert conv.id == "test-conversation-001"
+        assert conv.conversation_id == "test-conversation-001"
         assert conv.version == "1.0"
-        assert len(conv.messages) == 20, (
-            "All 20 messages from the fixture must be loaded"
-        )
+        assert conv.schema == "conversation.v1"
+        assert conv.model.provider == "claude"
+        assert conv.model.model_id == "claude-sonnet-4-6"
+        assert conv.metadata.title == "Sample conversation"
+        assert len(conv.messages) == 20, "All 20 messages from the fixture must be loaded"
 
     @_xfail
     def test_message_roles_preserved_after_reload(self, sample_conversation):
@@ -197,7 +238,6 @@ class TestTC12ConversationPersistence:
         conv = ConversationLoader.load(sample_conversation)
 
         roles = [m.role for m in conv.messages]
-        # Fixture produces alternating user/assistant starting with user
         assert roles[0] == "user"
         assert roles[1] == "assistant"
         assert all(r in ("user", "assistant") for r in roles), (
@@ -212,17 +252,25 @@ class TestTC12ConversationPersistence:
 class TestTC13ConversationSearch:
     """Search filters by content/title; clearing returns the full list."""
 
-    def _make_conversation_file(self, conv_dir: Path, conv_id: str, title: str, content: str) -> None:
-        """Write a minimal conversation JSON for search tests."""
+    def _make_conversation_file(
+        self, conv_dir: Path, conv_id: str, title: str, content: str
+    ) -> None:
+        """Write a minimal conversation JSON (locked schema) for search tests."""
         data = {
             "version": "1.0",
-            "id": conv_id,
-            "title": title,
-            "model": "llama3:8b",
-            "created_at": "2026-05-22T10:00:00Z",
+            "schema": "conversation.v1",
+            "conversation_id": conv_id,
+            "created": "2026-05-22T10:00:00Z",
+            "model": {"provider": "ollama", "model_id": "llama3:8b"},
             "messages": [
-                {"id": "msg_000", "role": "user", "content": content, "timestamp": "2026-05-22T10:00:00Z"},
+                {
+                    "id": "msg_000",
+                    "role": "user",
+                    "content": content,
+                    "timestamp": "2026-05-22T10:00:00Z",
+                }
             ],
+            "metadata": {"title": title, "tags": [], "module_usage": {}},
         }
         (conv_dir / f"{conv_id}.json").write_text(json.dumps(data))
 
@@ -241,7 +289,7 @@ class TestTC13ConversationSearch:
         assert len(results) == 1, (
             f"Search for 'Python' must return exactly 1 conversation, got {len(results)}"
         )
-        assert results[0].id == "conv-001", (
+        assert results[0].conversation_id == "conv-001", (
             "Search must return the conversation whose title matches the query"
         )
 
@@ -257,8 +305,8 @@ class TestTC13ConversationSearch:
         results = ConversationLoader.search(conv_dir, "photosynthesis")
 
         assert len(results) == 1
-        assert results[0].id == "conv-001", (
-            "Search must match against message content, not just title"
+        assert results[0].conversation_id == "conv-001", (
+            "Search must match against message content, not just metadata.title"
         )
 
     @_xfail

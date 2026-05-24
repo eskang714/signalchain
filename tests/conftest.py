@@ -137,11 +137,12 @@ def sample_conversation(tmp_path: Path) -> Path:
 
     conversation = {
         "version": "1.0",
-        "id": "test-conversation-001",
-        "title": "Sample conversation",
-        "model": "claude-sonnet-4-6",
-        "created_at": "2026-05-22T10:00:00Z",
+        "schema": "conversation.v1",
+        "conversation_id": "test-conversation-001",
+        "created": "2026-05-22T10:00:00Z",
+        "model": {"provider": "claude", "model_id": "claude-sonnet-4-6"},
         "messages": messages,
+        "metadata": {"title": "Sample conversation", "tags": [], "module_usage": {}},
     }
 
     conv_dir = tmp_path / "conversations"
@@ -170,11 +171,12 @@ def large_conversation(tmp_path: Path) -> Path:
 
     conversation = {
         "version": "1.0",
-        "id": "large-conversation-001",
-        "title": "Large scale test conversation",
-        "model": "llama3:8b",
-        "created_at": "2026-05-22T00:00:00Z",
+        "schema": "conversation.v1",
+        "conversation_id": "large-conversation-001",
+        "created": "2026-05-22T00:00:00Z",
+        "model": {"provider": "ollama", "model_id": "llama3:8b"},
         "messages": messages,
+        "metadata": {"title": "Large scale test conversation", "tags": [], "module_usage": {}},
     }
 
     conv_dir = tmp_path / "conversations"
