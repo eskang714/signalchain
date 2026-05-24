@@ -3,31 +3,17 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA_VERSION = "1.0"
-_SCHEMA_NAME = "conversation.v1"
-
-
-# ---------------------------------------------------------------------------
-# Data classes
-# ---------------------------------------------------------------------------
 
 @dataclass
-class ConversationModel:
+class ModelRef:
     provider: str
     model_id: str
-
-
-@dataclass
-class ConversationMetadata:
-    title: str = ""
-    tags: list[str] = field(default_factory=list)
-    module_usage: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -39,31 +25,38 @@ class ConversationMessage:
 
 
 @dataclass
+class ConversationMetadata:
+    title: str
+    tags: list
+    module_usage: dict
+
+
+@dataclass
 class Conversation:
     conversation_id: str
     version: str
     schema: str
     created: str
-    model: ConversationModel
+    model: ModelRef
     messages: list[ConversationMessage]
     metadata: ConversationMetadata
 
     @classmethod
     def create(cls, provider: str, model_id: str) -> Conversation:
         return cls(
-            conversation_id=f"conv_{uuid.uuid4().hex[:12]}",
-            version=_SCHEMA_VERSION,
-            schema=_SCHEMA_NAME,
+            conversation_id=f"conv_{uuid.uuid4().hex}",
+            version="1.0",
+            schema="conversation.v1",
             created=datetime.now(timezone.utc).isoformat(),
-            model=ConversationModel(provider=provider, model_id=model_id),
+            model=ModelRef(provider=provider, model_id=model_id),
             messages=[],
-            metadata=ConversationMetadata(),
+            metadata=ConversationMetadata(title="", tags=[], module_usage={}),
         )
 
     def add_message(self, role: str, content: str) -> None:
         self.messages.append(
             ConversationMessage(
-                id=f"msg_{uuid.uuid4().hex[:8]}",
+                id=f"msg_{len(self.messages):04d}",
                 role=role,
                 content=content,
                 timestamp=datetime.now(timezone.utc).isoformat(),
@@ -71,22 +64,17 @@ class Conversation:
         )
 
 
-# ---------------------------------------------------------------------------
-# Loader
-# ---------------------------------------------------------------------------
-
 class ConversationLoader:
     @staticmethod
-    def save(conversation: Conversation, directory: Path) -> Path:
-        """Serialize a Conversation to JSON inside *directory*. Returns the file path."""
+    def save(conv: Conversation, directory: Path) -> Path:
         data = {
-            "version": conversation.version,
-            "schema": conversation.schema,
-            "conversation_id": conversation.conversation_id,
-            "created": conversation.created,
+            "version": conv.version,
+            "schema": conv.schema,
+            "conversation_id": conv.conversation_id,
+            "created": conv.created,
             "model": {
-                "provider": conversation.model.provider,
-                "model_id": conversation.model.model_id,
+                "provider": conv.model.provider,
+                "model_id": conv.model.model_id,
             },
             "messages": [
                 {
@@ -95,80 +83,62 @@ class ConversationLoader:
                     "content": m.content,
                     "timestamp": m.timestamp,
                 }
-                for m in conversation.messages
+                for m in conv.messages
             ],
             "metadata": {
-                "title": conversation.metadata.title,
-                "tags": conversation.metadata.tags,
-                "module_usage": conversation.metadata.module_usage,
+                "title": conv.metadata.title,
+                "tags": conv.metadata.tags,
+                "module_usage": conv.metadata.module_usage,
             },
         }
-        path = directory / f"{conversation.conversation_id}.json"
+        path = directory / f"{conv.conversation_id}.json"
         path.write_text(json.dumps(data, indent=2))
         return path
 
     @staticmethod
     def load(path: Path) -> Conversation:
-        """Deserialize a Conversation from a JSON file. Raises on malformed input."""
-        return ConversationLoader._from_dict(json.loads(path.read_text()))
+        data = json.loads(path.read_text())
+        return ConversationLoader._from_dict(data)
+
+    @staticmethod
+    def _from_dict(data: dict) -> Conversation:
+        model = ModelRef(**data["model"])
+        messages = [ConversationMessage(**m) for m in data.get("messages", [])]
+        raw_meta = data.get("metadata", {})
+        metadata = ConversationMetadata(
+            title=raw_meta.get("title", ""),
+            tags=raw_meta.get("tags", []),
+            module_usage=raw_meta.get("module_usage", {}),
+        )
+        return Conversation(
+            conversation_id=data["conversation_id"],
+            version=data["version"],
+            schema=data["schema"],
+            created=data["created"],
+            model=model,
+            messages=messages,
+            metadata=metadata,
+        )
 
     @staticmethod
     def load_all(directory: Path) -> list[Conversation]:
-        """Load every valid *.json conversation in *directory*.
-
-        Corrupt or unreadable files are logged and skipped — the app must not
-        crash on a bad file (Critical Behavior from CLAUDE.md).
-        """
-        conversations: list[Conversation] = []
+        result = []
         for path in sorted(directory.glob("*.json")):
             try:
-                conversations.append(ConversationLoader.load(path))
-            except Exception as exc:
-                logger.warning("Skipping corrupt conversation file %s: %s", path, exc)
-        return conversations
+                result.append(ConversationLoader.load(path))
+            except Exception:
+                logger.warning("Skipping corrupt conversation file: %s", path)
+        return result
 
     @staticmethod
     def search(directory: Path, query: str) -> list[Conversation]:
-        """Return conversations whose title or message content contains *query*.
-
-        An empty *query* returns the full list.
-        """
         conversations = ConversationLoader.load_all(directory)
         if not query:
             return conversations
         q = query.lower()
         return [
-            c for c in conversations
+            c
+            for c in conversations
             if q in c.metadata.title.lower()
             or any(q in m.content.lower() for m in c.messages)
         ]
-
-    @staticmethod
-    def _from_dict(data: dict) -> Conversation:
-        model_raw = data["model"]
-        meta_raw = data.get("metadata", {})
-        messages = [
-            ConversationMessage(
-                id=m["id"],
-                role=m["role"],
-                content=m["content"],
-                timestamp=m["timestamp"],
-            )
-            for m in data.get("messages", [])
-        ]
-        return Conversation(
-            conversation_id=data["conversation_id"],
-            version=data["version"],
-            schema=data.get("schema", _SCHEMA_NAME),
-            created=data["created"],
-            model=ConversationModel(
-                provider=model_raw["provider"],
-                model_id=model_raw["model_id"],
-            ),
-            messages=messages,
-            metadata=ConversationMetadata(
-                title=meta_raw.get("title", ""),
-                tags=meta_raw.get("tags", []),
-                module_usage=meta_raw.get("module_usage", {}),
-            ),
-        )
