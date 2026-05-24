@@ -137,17 +137,52 @@ def sample_conversation(tmp_path: Path) -> Path:
 
     conversation = {
         "version": "1.0",
-        "id": "test-conversation-001",
-        "title": "Sample conversation",
-        "model": "claude-sonnet-4-6",
-        "created_at": "2026-05-22T10:00:00Z",
+        "schema": "conversation.v1",
+        "conversation_id": "test-conversation-001",
+        "created": "2026-05-22T10:00:00Z",
+        "model": {"provider": "claude", "model_id": "claude-sonnet-4-6"},
         "messages": messages,
+        "metadata": {"title": "Sample conversation", "tags": [], "module_usage": {}},
     }
 
     conv_dir = tmp_path / "conversations"
     conv_dir.mkdir(exist_ok=True)
     conv_file = conv_dir / "sample_conversation.json"
     conv_file.write_text(json.dumps(conversation, indent=2))
+    return conv_file
+
+
+@pytest.fixture()
+def large_conversation(tmp_path: Path) -> Path:
+    """
+    A well-formed conversation file with 1000 messages for scale tests (TC-14).
+
+    Message content is varied so search tests have something to match against.
+    """
+    messages = [
+        {
+            "id": f"msg_{i:04d}",
+            "role": "user" if i % 2 == 0 else "assistant",
+            "content": f"Scale test message number {i}. " + ("filler text " * 4),
+            "timestamp": f"2026-05-22T{i // 3600:02d}:{(i % 3600) // 60:02d}:{i % 60:02d}Z",
+        }
+        for i in range(1000)
+    ]
+
+    conversation = {
+        "version": "1.0",
+        "schema": "conversation.v1",
+        "conversation_id": "large-conversation-001",
+        "created": "2026-05-22T00:00:00Z",
+        "model": {"provider": "ollama", "model_id": "llama3:8b"},
+        "messages": messages,
+        "metadata": {"title": "Large scale test conversation", "tags": [], "module_usage": {}},
+    }
+
+    conv_dir = tmp_path / "conversations"
+    conv_dir.mkdir(exist_ok=True)
+    conv_file = conv_dir / "large_conversation.json"
+    conv_file.write_text(json.dumps(conversation))
     return conv_file
 
 
