@@ -44,11 +44,6 @@ from pathlib import Path
 
 import pytest
 
-_xfail = pytest.mark.xfail(
-    reason="module system not yet implemented - TDD red phase",
-    strict=True,
-)
-
 # Names that are always reserved for global modules.
 _GLOBAL_NAMES = {
     "conversation_history",
@@ -108,7 +103,6 @@ def _write_global_module(global_dir: Path, name: str) -> Path:
 class TestTC05ValidModuleDiscovery:
     """A folder with module.json + module.py → RUNNABLE_UNVERIFIED, can be enabled."""
 
-    @_xfail
     def test_valid_module_gets_runnable_unverified_state(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry, ModuleState
 
@@ -125,7 +119,6 @@ class TestTC05ValidModuleDiscovery:
             "A structurally valid user module must get state RUNNABLE_UNVERIFIED"
         )
 
-    @_xfail
     def test_valid_module_can_be_enabled(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -141,7 +134,6 @@ class TestTC05ValidModuleDiscovery:
             "A RUNNABLE_UNVERIFIED module must have can_enable=True so the user can toggle it"
         )
 
-    @_xfail
     def test_valid_module_name_read_from_manifest(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -164,7 +156,6 @@ class TestTC05ValidModuleDiscovery:
 class TestTC06InvalidModuleDiscovery:
     """A folder missing module.py → INVALID, toggle disabled, specific error message."""
 
-    @_xfail
     def test_module_missing_py_gets_invalid_state(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry, ModuleState
 
@@ -181,7 +172,6 @@ class TestTC06InvalidModuleDiscovery:
             "A module missing module.py must receive state INVALID"
         )
 
-    @_xfail
     def test_invalid_module_cannot_be_enabled(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -196,7 +186,6 @@ class TestTC06InvalidModuleDiscovery:
             "An INVALID module must have can_enable=False — the toggle must be disabled"
         )
 
-    @_xfail
     def test_invalid_module_error_names_missing_file(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -220,7 +209,6 @@ class TestTC06InvalidModuleDiscovery:
 class TestTC07ModuleRefreshWithoutRestart:
     """A fresh scan() after adding a module directory picks it up without restarting."""
 
-    @_xfail
     def test_new_module_appears_after_rescan(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -246,7 +234,6 @@ class TestTC07ModuleRefreshWithoutRestart:
             "Existing modules must still be present after a re-scan"
         )
 
-    @_xfail
     def test_removed_module_disappears_after_rescan(self, tmp_path):
         import shutil
         from signal_chain.modules.registry import ModuleRegistry
@@ -276,7 +263,6 @@ class TestTC08ModuleNameCollision:
     """User module with the same name as a global module is rejected or renamed;
     global is unaffected; user receives a clear explanation."""
 
-    @_xfail
     def test_global_module_unaffected_by_collision(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry, ModuleState
 
@@ -301,7 +287,6 @@ class TestTC08ModuleNameCollision:
             "The global module must not be invalidated by a conflicting user module"
         )
 
-    @_xfail
     def test_colliding_user_module_is_rejected_or_renamed(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry, ModuleState
 
@@ -329,7 +314,6 @@ class TestTC08ModuleNameCollision:
             # No user record named "file_system" → it was renamed; that's acceptable too
             pass
 
-    @_xfail
     def test_collision_explanation_is_provided(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry, ModuleState
 
@@ -370,7 +354,6 @@ class TestTC09ModuleIsolationEnforcement:
     Tests target Option A: ModuleRunner.execute() with a caller_module kwarg.
     """
 
-    @_xfail
     def test_user_module_calling_another_user_module_is_blocked(self):
         from signal_chain.modules.runner import ModuleIsolationError, ModuleRunner
 
@@ -387,7 +370,6 @@ class TestTC09ModuleIsolationEnforcement:
                 caller_module="module_a",  # user module calling another user module
             )
 
-    @_xfail
     def test_target_module_unaffected_after_blocked_call(self):
         from signal_chain.modules.runner import ModuleRunner
 
@@ -407,7 +389,6 @@ class TestTC09ModuleIsolationEnforcement:
             "module_b must still execute normally after a blocked cross-module call"
         )
 
-    @_xfail
     def test_caller_receives_error_not_result(self):
         from signal_chain.modules.runner import ModuleIsolationError, ModuleRunner
 
@@ -433,7 +414,6 @@ class TestTC09ModuleIsolationEnforcement:
 class TestTC10GlobalModuleCannotBeDisabled:
     """conversation_history is always present, always enabled, has no disable toggle."""
 
-    @_xfail
     def test_conversation_history_appears_in_scan_results(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -450,7 +430,6 @@ class TestTC10GlobalModuleCannotBeDisabled:
             "conversation_history must always appear in the module list"
         )
 
-    @_xfail
     def test_global_module_has_no_enable_toggle(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -470,7 +449,6 @@ class TestTC10GlobalModuleCannotBeDisabled:
             "Global modules must not have a disable toggle (can_enable must be False)"
         )
 
-    @_xfail
     def test_global_module_always_enabled(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
@@ -489,7 +467,6 @@ class TestTC10GlobalModuleCannotBeDisabled:
             "conversation_history must always be enabled in every conversation"
         )
 
-    @_xfail
     def test_global_module_stays_enabled_after_disable_attempt(self, tmp_path):
         from signal_chain.modules.registry import ModuleRegistry
 
