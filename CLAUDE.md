@@ -48,7 +48,7 @@ class BaseProvider(ABC):
 ```python
 class BaseModule(ABC):
     def initialize(self) -> None: ...
-    def execute(self, function_name: str, parameters: dict) -> dict: ...
+    def execute(self, function_name: str, parameters: dict, caller_module: str | None = None) -> dict: ...
     def shutdown(self) -> None: ...
     def get_functions(self) -> List[FunctionSchema]: ...
 ```
@@ -74,6 +74,11 @@ class BaseModule(ABC):
 - Attribution for AI-assisted commits goes in the PR comment, not the commit body
 - Squash merge uses the PR title (conventional format) as the commit title
 - One ticket, one task, one branch
+- Keep PR titles (commit subjects) under 72 characters — GitHub truncates longer
+  titles during squash merge, splitting content into the extended description
+- Always include "Closes #XX" in the squash commit extended description (not just
+  the PR body) — the PR body is replaced on squash; only the commit body persists
+  to trigger GitHub's auto-close
 
 ## What to Flag Rather Than Decide
 If you encounter an architectural question not answered here, stop and flag it.
