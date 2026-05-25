@@ -18,9 +18,10 @@ _CONFIG_PATH = Path.home() / ".config" / "signalchain" / "config.yaml"
 
 
 class Application:
-    def __init__(self, argv: list[str]) -> None:
+    def __init__(self, argv: list[str], provider: object | None = None) -> None:
         self._qt_app = QApplication(argv)
         self._startup_vm = StartupViewModel()
+        self._provider_override = provider
         self._main_window: MainWindow | None = None
         self._vm: ConversationViewModel | None = None
         self._conversation: Conversation | None = None
@@ -77,7 +78,7 @@ class Application:
         self._conv_dir = config.conversation_dir
 
         # Provider setup
-        provider = OllamaProvider()
+        provider = self._provider_override or OllamaProvider()
         model_id = ""
         if not provider.validate_config():
             QMessageBox.warning(

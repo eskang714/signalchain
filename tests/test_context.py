@@ -22,10 +22,6 @@ import pytest
 
 from signal_chain.providers.base import Message
 
-_xfail = pytest.mark.xfail(
-    reason="context window not yet implemented — TDD red phase", strict=True
-)
-
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -54,7 +50,6 @@ def _char_counter(text: str) -> int:
 class TestTC28RecentMessagesLimit:
     """Only the most recent N messages are forwarded to the provider on each send."""
 
-    @_xfail
     def test_only_most_recent_n_messages_sent(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -66,7 +61,6 @@ class TestTC28RecentMessagesLimit:
             "With 50 messages and window_size=20, exactly 20 messages must be returned"
         )
 
-    @_xfail
     def test_returned_messages_are_the_newest(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -78,7 +72,6 @@ class TestTC28RecentMessagesLimit:
             "The 20 returned messages must be the newest 20, not the oldest 20"
         )
 
-    @_xfail
     def test_all_messages_returned_when_fewer_than_window(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -90,7 +83,6 @@ class TestTC28RecentMessagesLimit:
             "When there are fewer messages than window_size, all messages must be returned"
         )
 
-    @_xfail
     def test_window_size_is_configurable(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -102,7 +94,6 @@ class TestTC28RecentMessagesLimit:
             "window_size=10 must limit output to the 10 most recent messages"
         )
 
-    @_xfail
     def test_default_window_size_is_20(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -114,7 +105,6 @@ class TestTC28RecentMessagesLimit:
             "Default window_size must be 20 per the project brief"
         )
 
-    @_xfail
     def test_total_tokens_do_not_exceed_provider_limit(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -143,7 +133,6 @@ class TestTC28RecentMessagesLimit:
 class TestTC29TokenLimitTruncation:
     """When token budget is tight, oldest messages are dropped silently."""
 
-    @_xfail
     def test_oldest_messages_truncated_when_token_limit_exceeded(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -164,7 +153,6 @@ class TestTC29TokenLimitTruncation:
         assert msgs[-1] in result, "The newest message must survive truncation"
         assert msgs[0] not in result, "The oldest message must be the first dropped"
 
-    @_xfail
     def test_newest_message_always_preserved(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -185,7 +173,6 @@ class TestTC29TokenLimitTruncation:
         assert len(result) >= 1, "prepare_messages must never return an empty list"
         assert result[-1] == msgs[-1], "The newest message must always be the last entry"
 
-    @_xfail
     def test_no_exception_when_truncation_required(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -204,7 +191,6 @@ class TestTC29TokenLimitTruncation:
                 f"prepare_messages must not raise when truncation is needed, got {exc!r}"
             )
 
-    @_xfail
     def test_response_buffer_reserved_from_token_limit(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -237,7 +223,6 @@ class TestTC29TokenLimitTruncation:
             f"got {total_with_buffer}"
         )
 
-    @_xfail
     def test_default_response_buffer_is_1000(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -264,7 +249,6 @@ class TestTC29TokenLimitTruncation:
             "Default response_buffer must be 1000 — prepared messages must fit in 5000-1000=4000 tokens"
         )
 
-    @_xfail
     def test_provider_limit_claude_is_180k(self):
         from signal_chain.models.context import ContextWindowManager
 
@@ -272,7 +256,6 @@ class TestTC29TokenLimitTruncation:
             "Claude provider token limit must be 180,000 per the project brief"
         )
 
-    @_xfail
     def test_provider_limit_ollama_is_4096(self):
         from signal_chain.models.context import ContextWindowManager
 
