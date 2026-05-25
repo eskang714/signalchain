@@ -64,6 +64,12 @@ class Conversation:
         )
 
 
+@dataclass
+class ConversationLoadError:
+    path: Path
+    error: str
+
+
 class ConversationLoader:
     @staticmethod
     def save(conv: Conversation, directory: Path) -> Path:
@@ -129,6 +135,20 @@ class ConversationLoader:
             except Exception:
                 logger.warning("Skipping corrupt conversation file: %s", path)
         return result
+
+    @staticmethod
+    def load_all_with_errors(
+        directory: Path,
+    ) -> tuple[list[Conversation], list[ConversationLoadError]]:
+        result: list[Conversation] = []
+        errors: list[ConversationLoadError] = []
+        for path in sorted(directory.glob("*.json")):
+            try:
+                result.append(ConversationLoader.load(path))
+            except Exception as exc:
+                logger.warning("Skipping corrupt conversation file: %s", path)
+                errors.append(ConversationLoadError(path=path, error=str(exc)))
+        return result, errors
 
     @staticmethod
     def search(directory: Path, query: str) -> list[Conversation]:

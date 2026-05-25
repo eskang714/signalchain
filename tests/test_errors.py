@@ -55,10 +55,6 @@ from signal_chain.providers.base import (
     ModelInfo,
 )
 
-_xfail = pytest.mark.xfail(
-    reason="error recovery not yet implemented — TDD red phase", strict=True
-)
-
 
 # ---------------------------------------------------------------------------
 # Stub provider for TC-30: emits tokens then raises mid-stream
@@ -116,7 +112,6 @@ class TestTC30MidStreamGenerationFailure:
         assert len(errors) == 1, "generation_error must fire exactly once on mid-stream failure"
         assert len(errors[0]) > 0, "Error message must be non-empty"
 
-    @_xfail
     def test_retry_last_message_restarts_generation(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
 
@@ -132,7 +127,6 @@ class TestTC30MidStreamGenerationFailure:
             "retry_last_message() must return 'sent' or 'queued'"
         )
 
-    @_xfail
     def test_retry_available_signal_emitted_after_mid_stream_failure(self, qtbot):
         from signal_chain.viewmodels.conversation import ConversationViewModel
 
@@ -159,7 +153,6 @@ class TestTC30MidStreamGenerationFailure:
 class TestTC31ModuleExecutionFailure:
     """Generation continues when a module raises; other modules are unaffected."""
 
-    @_xfail
     def test_generation_continues_after_module_exception(self):
         from signal_chain.modules.runner import ModuleRunner
 
@@ -176,7 +169,6 @@ class TestTC31ModuleExecutionFailure:
             "rather than propagating the module's exception"
         )
 
-    @_xfail
     def test_module_error_signal_emitted_with_failing_module_name(self, qtbot):
         from signal_chain.modules.runner import ModuleRunner
 
@@ -196,7 +188,6 @@ class TestTC31ModuleExecutionFailure:
             "module_error must include the failing module's name"
         )
 
-    @_xfail
     def test_other_modules_unaffected_after_single_failure(self):
         from signal_chain.modules.runner import ModuleRunner
 
@@ -219,7 +210,6 @@ class TestTC31ModuleExecutionFailure:
 class TestTC32RateLimitAutoRetry:
     """Claude API 429 responses trigger automatic retry with countdown, no user action needed."""
 
-    @_xfail
     def test_429_triggers_automatic_retry_without_user_action(self, qtbot):
         from unittest.mock import MagicMock, patch
 
@@ -251,7 +241,6 @@ class TestTC32RateLimitAutoRetry:
         )
         assert "token" in tokens, "Generation must succeed after the rate-limit wait"
 
-    @_xfail
     def test_countdown_tick_signal_emitted_during_rate_limit_wait(self, qtbot):
         from signal_chain.providers.claude import ClaudeProvider
 
@@ -261,7 +250,6 @@ class TestTC32RateLimitAutoRetry:
             "each second while waiting for the rate-limit retry window"
         )
 
-    @_xfail
     def test_retry_after_header_value_honored(self, qtbot):
         from unittest.mock import MagicMock, patch
 
@@ -299,7 +287,6 @@ class TestTC32RateLimitAutoRetry:
             "Provider must sleep for at least the retry-after header value (5 s) before retrying"
         )
 
-    @_xfail
     def test_generation_error_emitted_after_max_retries_exhausted(self, qtbot):
         from unittest.mock import MagicMock, patch
 
@@ -366,7 +353,6 @@ class TestTC33UncleanShutdownRecovery:
             "Valid conversations must load normally even when a truncated file is present"
         )
 
-    @_xfail
     def test_corrupt_file_paths_reported_to_caller(self, tmp_path):
         from signal_chain.models.conversation import ConversationLoader
 
@@ -420,7 +406,6 @@ class TestTC34CorruptedConversationFile:
             "A valid conversation saved alongside a corrupt file must still load"
         )
 
-    @_xfail
     def test_corrupt_file_error_indicator_in_load_result(self, corrupt_conversation_file):
         from signal_chain.models.conversation import ConversationLoader
 

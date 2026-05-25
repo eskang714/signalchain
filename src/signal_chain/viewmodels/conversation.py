@@ -48,6 +48,9 @@ class ConversationViewModel(BaseViewModel):
     generation_complete = pyqtSignal()
     generation_error = pyqtSignal(str)
     generation_started = pyqtSignal()
+    retry_available = pyqtSignal()
+    module_error = pyqtSignal(str)
+    countdown_tick = pyqtSignal(int)
 
     # Holds strong Python references to all running threads.
     # Without this, a test that ends before generation completes would drop the
@@ -62,11 +65,21 @@ class ConversationViewModel(BaseViewModel):
         self.response_text: str = ""
         self.error_state: str = ""
         self._thread: _GenerationThread | None = None
+        self._last_text: str | None = None
 
     def send_message(self, text: str) -> str:
         if self.is_generating:
             return "queued"
+        self._last_text = text
         self._start_generation([Message(role="user", content=text)], GenerationConfig())
+        return "sent"
+
+    def retry_last_message(self) -> str:
+        if self._last_text is None or self.is_generating:
+            return "queued"
+        self._start_generation(
+            [Message(role="user", content=self._last_text)], GenerationConfig()
+        )
         return "sent"
 
     def _start_generation(
@@ -100,6 +113,7 @@ class ConversationViewModel(BaseViewModel):
         self.error_state = message
         self.is_generating = False
         self._cleanup_thread()
+        self.retry_available.emit()
         self.generation_error.emit(message)
 
     def _cleanup_thread(self) -> None:
