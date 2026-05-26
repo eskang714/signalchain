@@ -34,11 +34,14 @@ class TestTC38ProviderConfigPersists:
         from signal_chain.models.settings import SettingsManager
 
         recorded: list[tuple[str, str, str]] = []
-        monkeypatch.setattr(
-            "keyring.set_password",
-            lambda svc, user, pwd: recorded.append((svc, user, pwd)),
-        )
-        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+        keychain: dict[tuple[str, str], str] = {}
+
+        def _mock_set(svc: str, user: str, pwd: str) -> None:
+            recorded.append((svc, user, pwd))
+            keychain[(svc, user)] = pwd
+
+        monkeypatch.setattr("keyring.set_password", _mock_set)
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: keychain.get((svc, user)))
 
         settings = SettingsManager.load(tmp_path / "config.yaml")
         settings.set_api_key("claude", "sk-test-key-123")
@@ -72,8 +75,9 @@ class TestTC38ProviderConfigPersists:
     def test_api_key_absent_from_config_yaml_after_save(self, tmp_path, monkeypatch):
         from signal_chain.models.settings import SettingsManager
 
-        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: None)
-        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+        keychain: dict[tuple[str, str], str] = {}
+        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: keychain.__setitem__((svc, user), pwd))
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: keychain.get((svc, user)))
 
         config_path = tmp_path / "config.yaml"
         settings = SettingsManager.load(config_path)

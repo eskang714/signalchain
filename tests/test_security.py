@@ -31,10 +31,6 @@ import logging
 
 import pytest
 
-_xfail = pytest.mark.xfail(
-    reason="security layer not yet implemented — TDD red phase", strict=True
-)
-
 _KEYRING_SERVICE = "signalchain"
 
 
@@ -48,8 +44,9 @@ class TestTC35ApiKeyNeverExposed:
     def test_api_key_not_in_config_yaml_after_save(self, tmp_path, monkeypatch):
         from signal_chain.models.settings import SettingsManager
 
-        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: None)
-        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+        keychain: dict[tuple[str, str], str] = {}
+        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: keychain.__setitem__((svc, user), pwd))
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: keychain.get((svc, user)))
 
         config_path = tmp_path / "config.yaml"
         settings = SettingsManager.load(config_path)
@@ -64,8 +61,9 @@ class TestTC35ApiKeyNeverExposed:
     def test_api_key_not_in_log_output_when_stored(self, tmp_path, monkeypatch, caplog):
         from signal_chain.models.settings import SettingsManager
 
-        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: None)
-        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+        keychain: dict[tuple[str, str], str] = {}
+        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: keychain.__setitem__((svc, user), pwd))
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: keychain.get((svc, user)))
 
         settings = SettingsManager.load(tmp_path / "config.yaml")
         with caplog.at_level(logging.DEBUG):
@@ -98,8 +96,9 @@ class TestTC35ApiKeyNeverExposed:
         """API key must not be held as a plain attribute — only keyring holds it."""
         from signal_chain.models.settings import SettingsManager
 
-        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: None)
-        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+        keychain: dict[tuple[str, str], str] = {}
+        monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: keychain.__setitem__((svc, user), pwd))
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: keychain.get((svc, user)))
 
         settings = SettingsManager.load(tmp_path / "config.yaml")
         settings.set_api_key("claude", "sk-attr-check-test")
@@ -126,11 +125,14 @@ class TestTC36CrossPlatformKeychain:
         from signal_chain.models.settings import SettingsManager
 
         calls: list[tuple[str, str, str]] = []
-        monkeypatch.setattr(
-            "keyring.set_password",
-            lambda svc, user, pwd: calls.append((svc, user, pwd)),
-        )
-        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+        keychain: dict[tuple[str, str], str] = {}
+
+        def _mock_set(svc: str, user: str, pwd: str) -> None:
+            calls.append((svc, user, pwd))
+            keychain[(svc, user)] = pwd
+
+        monkeypatch.setattr("keyring.set_password", _mock_set)
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: keychain.get((svc, user)))
 
         settings = SettingsManager.load(tmp_path / "config.yaml")
         settings.set_api_key("claude", "sk-keyring-call-test")
@@ -177,7 +179,6 @@ class TestTC36CrossPlatformKeychain:
                     f"found in {path.name}"
                 )
 
-    @_xfail
     def test_null_keyring_backend_detected_not_silently_discarded(
         self, tmp_path, monkeypatch
     ):
@@ -210,7 +211,6 @@ class TestTC36CrossPlatformKeychain:
 class TestTC37ConnectedAccountsScopeEnforcement:
     """connected_accounts provides tokens only — it never calls external APIs itself."""
 
-    @_xfail
     def test_get_token_returns_token_for_connected_service(self):
         from signal_chain.modules.connected_accounts import ConnectedAccountsModule
 
@@ -222,7 +222,6 @@ class TestTC37ConnectedAccountsScopeEnforcement:
         assert "token" in result, "get_token must return a dict with a 'token' key"
         assert result["token"] is not None, "token must be non-None for a connected service"
 
-    @_xfail
     def test_connected_accounts_makes_no_external_network_calls(self, monkeypatch):
         """connected_accounts is a pure passthrough — no outbound HTTP during get_token."""
         from signal_chain.modules.connected_accounts import ConnectedAccountsModule
@@ -244,7 +243,6 @@ class TestTC37ConnectedAccountsScopeEnforcement:
             "it only retrieves stored tokens, never calls external APIs itself"
         )
 
-    @_xfail
     def test_get_token_result_contains_credential_not_api_data(self):
         """The returned dict contains credential fields only, not API response payloads."""
         from signal_chain.modules.connected_accounts import ConnectedAccountsModule
@@ -261,7 +259,6 @@ class TestTC37ConnectedAccountsScopeEnforcement:
             f"Unexpected keys: {unexpected}"
         )
 
-    @_xfail
     def test_connected_accounts_has_no_data_processing_functions(self):
         """connected_accounts exposes only auth functions, not data-fetching calls."""
         from signal_chain.modules.connected_accounts import ConnectedAccountsModule
