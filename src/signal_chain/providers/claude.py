@@ -23,7 +23,10 @@ class ClaudeProvider(QObject):
 
     def _stream_tokens(self, messages: list[dict]) -> Iterator[str]:
         import anthropic
-        api_key = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USER)
+        try:
+            api_key = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USER)
+        except Exception:
+            api_key = None
         client = anthropic.Anthropic(api_key=api_key)
         for chunk in client.messages.stream(
             model=self._model_id,
