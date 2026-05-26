@@ -20,10 +20,6 @@ Keyring in tests:
 """
 import pytest
 
-_xfail = pytest.mark.xfail(
-    reason="settings layer not yet implemented — TDD red phase", strict=True
-)
-
 _KEYRING_SERVICE = "signalchain"
 
 
@@ -34,7 +30,6 @@ _KEYRING_SERVICE = "signalchain"
 class TestTC38ProviderConfigPersists:
     """API keys go to keyring, not to config.yaml; they survive a restart cycle."""
 
-    @_xfail
     def test_api_key_stored_via_keyring_set_password(self, tmp_path, monkeypatch):
         from signal_chain.models.settings import SettingsManager
 
@@ -58,7 +53,6 @@ class TestTC38ProviderConfigPersists:
             "The API key value must be passed to keyring.set_password"
         )
 
-    @_xfail
     def test_api_key_retrieved_via_keyring_get_password(self, tmp_path, monkeypatch):
         from signal_chain.models.settings import SettingsManager
 
@@ -75,7 +69,6 @@ class TestTC38ProviderConfigPersists:
             "get_api_key must retrieve the key via keyring.get_password"
         )
 
-    @_xfail
     def test_api_key_absent_from_config_yaml_after_save(self, tmp_path, monkeypatch):
         from signal_chain.models.settings import SettingsManager
 
@@ -95,7 +88,6 @@ class TestTC38ProviderConfigPersists:
             "No fragment of the API key may appear in the config file"
         )
 
-    @_xfail
     def test_api_key_survives_save_and_reload_cycle(self, tmp_path, monkeypatch):
         keychain: dict[tuple[str, str], str] = {}
 
@@ -124,7 +116,6 @@ class TestTC38ProviderConfigPersists:
             "simulates application restart"
         )
 
-    @_xfail
     def test_missing_api_key_returns_none(self, tmp_path, monkeypatch):
         monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: None)
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
@@ -146,7 +137,6 @@ class TestTC38ProviderConfigPersists:
 class TestTC39ContextWindowSettingApplied:
     """Changing window_size in settings affects how many messages are sent to the model."""
 
-    @_xfail
     def test_default_context_window_size_is_20(self, tmp_path, monkeypatch):
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
 
@@ -157,7 +147,6 @@ class TestTC39ContextWindowSettingApplied:
             "Default context window size must be 20 per the project brief"
         )
 
-    @_xfail
     def test_context_window_size_changeable(self, tmp_path, monkeypatch):
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
 
@@ -170,7 +159,6 @@ class TestTC39ContextWindowSettingApplied:
             "set_context_window_size(10) must be immediately reflected by get_context_window_size()"
         )
 
-    @_xfail
     def test_context_window_size_persists_across_reload(self, tmp_path, monkeypatch):
         monkeypatch.setattr("keyring.set_password", lambda svc, user, pwd: None)
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
@@ -187,7 +175,6 @@ class TestTC39ContextWindowSettingApplied:
             "context_window_size must survive a save → reload cycle (simulates restart)"
         )
 
-    @_xfail
     def test_context_window_size_below_minimum_rejected(self, tmp_path, monkeypatch):
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
 
@@ -199,7 +186,6 @@ class TestTC39ContextWindowSettingApplied:
                 "window_size below the minimum of 10 must be rejected with ValueError"
             )
 
-    @_xfail
     def test_context_window_size_above_maximum_rejected(self, tmp_path, monkeypatch):
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
 
@@ -211,7 +197,6 @@ class TestTC39ContextWindowSettingApplied:
                 "window_size above the maximum of 50 must be rejected with ValueError"
             )
 
-    @_xfail
     def test_context_window_size_from_settings_applied_to_context_manager(
         self, tmp_path, monkeypatch
     ):
