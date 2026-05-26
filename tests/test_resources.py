@@ -39,10 +39,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-_xfail = pytest.mark.xfail(
-    reason="resource management not yet implemented — TDD red phase", strict=True
-)
-
 _8GB = 8 * 1024 ** 3
 _6GB = 6 * 1024 ** 3
 _4GB = 4 * 1024 ** 3
@@ -56,7 +52,6 @@ _3GB = 3 * 1024 ** 3
 class TestTC23ArchitectureIncompatibilityHardBlock:
     """Model requiring AVX-512 is hard-blocked on a CPU that only supports base x86-64."""
 
-    @_xfail
     def test_model_blocked_when_cpu_lacks_required_feature(self, monkeypatch):
         from signal_chain.resources.manager import (
             ModelRequirements,
@@ -78,7 +73,6 @@ class TestTC23ArchitectureIncompatibilityHardBlock:
         )
         assert result.blocked is True
 
-    @_xfail
     def test_incompatibility_message_names_the_missing_cpu_feature(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -96,7 +90,6 @@ class TestTC23ArchitectureIncompatibilityHardBlock:
             kw in result.message.lower() for kw in ("avx512", "avx-512", "instruction")
         ), "incompatibility message must reference the missing CPU feature"
 
-    @_xfail
     def test_no_workaround_offered_for_architecture_incompatibility(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -113,7 +106,6 @@ class TestTC23ArchitectureIncompatibilityHardBlock:
             "Architecture incompatibility is a hard block — no workaround must be offered"
         )
 
-    @_xfail
     def test_alternative_models_suggested_for_architecture_block(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -141,7 +133,6 @@ class TestTC23ArchitectureIncompatibilityHardBlock:
 class TestTC24MinimumRequirementsBlock:
     """Model needs 8GB RAM; only 3GB available — tier is BLOCKED, model does not load."""
 
-    @_xfail
     def test_blocked_tier_when_available_ram_far_below_model_size(self, monkeypatch):
         from signal_chain.resources.manager import (
             ModelRequirements,
@@ -161,7 +152,6 @@ class TestTC24MinimumRequirementsBlock:
             "Model needing 8GB when only 3GB is available must receive BLOCKED tier"
         )
 
-    @_xfail
     def test_load_raises_when_requirements_are_blocked(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -176,7 +166,6 @@ class TestTC24MinimumRequirementsBlock:
         with pytest.raises(Exception):
             manager.load_model("test-model", requirements=reqs)
 
-    @_xfail
     def test_blocked_result_includes_alternatives_list(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -192,7 +181,6 @@ class TestTC24MinimumRequirementsBlock:
             "BLOCKED result must include a list of smaller compatible alternatives"
         )
 
-    @_xfail
     def test_check_requirements_returns_result_without_raising(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -217,7 +205,6 @@ class TestTC24MinimumRequirementsBlock:
 class TestTC25SwapWarningOrangeTier:
     """Model needs 6GB; only 4GB available — WILL_SWAP tier with SSD warning and acknowledgment gate."""
 
-    @_xfail
     def test_will_swap_tier_when_available_ram_below_model_size(self, monkeypatch):
         from signal_chain.resources.manager import (
             ModelRequirements,
@@ -237,7 +224,6 @@ class TestTC25SwapWarningOrangeTier:
             "Model needing 6GB when 4GB is available must receive WILL_SWAP (orange) tier"
         )
 
-    @_xfail
     def test_will_swap_result_sets_ssd_wear_warning(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -254,7 +240,6 @@ class TestTC25SwapWarningOrangeTier:
             "degrade a consumer SSD (~600 TBW) in weeks at ~10GB/min write rate"
         )
 
-    @_xfail
     def test_will_swap_result_requires_acknowledgment_before_load(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -271,7 +256,6 @@ class TestTC25SwapWarningOrangeTier:
             "(spec: user checks 3 acknowledgment boxes including SSD wear warning)"
         )
 
-    @_xfail
     def test_will_swap_result_includes_tokens_per_sec_estimate(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -299,7 +283,6 @@ class TestTC25SwapWarningOrangeTier:
 class TestTC26CpuCoreAffinityEnforcement:
     """When cpu_cores=[0,1,2,3] is configured, the ResourceManager restricts the process to those cores."""
 
-    @_xfail
     def test_affinity_set_to_configured_cores_on_load(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -325,7 +308,6 @@ class TestTC26CpuCoreAffinityEnforcement:
             "cpu_affinity must be set to exactly the configured cores [0, 1, 2, 3]"
         )
 
-    @_xfail
     def test_affinity_not_changed_when_no_cores_configured(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -356,7 +338,6 @@ class TestTC26CpuCoreAffinityEnforcement:
 class TestTC27VramLimitEnforcement:
     """GPU allocation stays within vram_limit_bytes; layers that don't fit fall back to CPU."""
 
-    @_xfail
     def test_gpu_allocation_does_not_exceed_configured_vram_limit(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
@@ -381,7 +362,6 @@ class TestTC27VramLimitEnforcement:
             "even when the full model requires 8GB of GPU memory"
         )
 
-    @_xfail
     def test_layers_exceeding_vram_limit_fall_back_to_cpu(self, monkeypatch):
         from signal_chain.resources.manager import ModelRequirements, ResourceManager
 
