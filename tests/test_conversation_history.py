@@ -28,13 +28,6 @@ xfail policy:
 """
 from pathlib import Path
 
-import pytest
-
-_xfail = pytest.mark.xfail(
-    reason="conversation_history module not yet implemented — TDD red phase",
-    strict=True,
-)
-
 
 class TestConversationHistoryModule:
     """ConversationHistoryModule: required global module, always enabled, stateful history store."""
@@ -43,7 +36,6 @@ class TestConversationHistoryModule:
     # A. Module discovery
     # ------------------------------------------------------------------
 
-    @_xfail
     def test_registry_scan_includes_conversation_history_as_global(self, tmp_path):
         """ModuleRegistry.scan() must return conversation_history with is_global=True."""
         import signal_chain.modules as _mods_pkg
@@ -66,7 +58,6 @@ class TestConversationHistoryModule:
     # B. add_message + get_history round-trip
     # ------------------------------------------------------------------
 
-    @_xfail
     def test_add_message_then_get_history_round_trip(self):
         """Single add_message followed by get_history returns that message."""
         from signal_chain.modules.conversation_history import ConversationHistoryModule
@@ -88,7 +79,6 @@ class TestConversationHistoryModule:
     # C. History is stateful across calls
     # ------------------------------------------------------------------
 
-    @_xfail
     def test_history_is_stateful_across_multiple_add_calls(self):
         """Three add_message calls → get_history returns all three in insertion order."""
         from signal_chain.modules.conversation_history import ConversationHistoryModule
@@ -113,7 +103,6 @@ class TestConversationHistoryModule:
     # D. clear_history() empties the history and signals success
     # ------------------------------------------------------------------
 
-    @_xfail
     def test_clear_history_empties_history_and_returns_cleared_true(self):
         """clear_history resets the store; subsequent get_history returns []."""
         from signal_chain.modules.conversation_history import ConversationHistoryModule
@@ -136,7 +125,6 @@ class TestConversationHistoryModule:
     # E. Cannot be disabled — global modules are always on
     # ------------------------------------------------------------------
 
-    @_xfail
     def test_global_module_cannot_be_disabled_via_registry(self, tmp_path):
         """registry.disable('conversation_history') is a no-op; module stays enabled."""
         from signal_chain.modules.conversation_history import ConversationHistoryModule  # noqa: F401
@@ -170,7 +158,6 @@ class TestConversationHistoryModule:
     # F. caller_module accepted without isolation error
     # ------------------------------------------------------------------
 
-    @_xfail
     def test_execute_accepts_caller_module_without_error(self):
         """Global modules accept calls from any caller_module without isolation errors."""
         from signal_chain.modules.conversation_history import ConversationHistoryModule
