@@ -240,3 +240,94 @@ class TestTC22LocalModelAdditionViaWizard:
         assert added.id in all_ids, (
             "A model added via add_model() must appear in the subsequent list_models() result"
         )
+
+
+# ---------------------------------------------------------------------------
+# ClaudeProvider: owned adapter interface (Humble Object pattern)
+# ---------------------------------------------------------------------------
+
+class TestClaudeProvider:
+    """Contract tests for the owned adapter layer above the anthropic.Anthropic boundary.
+
+    CRITICAL: anthropic.Anthropic() and messages.stream() are NOT mocked here —
+    they are the Humble Object boundary (thin wrappers, untestable in isolation).
+    All mocking targets OWNED types: ClaudeProvider._stream_tokens() and keyring.
+    """
+
+    @_xfail
+    def test_generate_stream_delegates_to_stream_tokens_adapter(self, monkeypatch):
+        """generate_stream() must call self._stream_tokens() rather than the raw API directly."""
+        from signal_chain.providers.base import GenerationConfig, Message
+        from signal_chain.providers.claude import ClaudeProvider
+
+        provider = ClaudeProvider()
+        monkeypatch.setattr(
+            provider,
+            "_stream_tokens",
+            lambda messages: iter(["Hello", " ", "world"]),
+            raising=False,
+        )
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+        messages = [Message(role="user", content="hi")]
+        tokens = list(provider.generate_stream(messages, GenerationConfig()))
+
+        assert tokens == ["Hello", " ", "world"], (
+            "generate_stream must delegate to _stream_tokens() and yield its tokens verbatim"
+        )
+
+    @_xfail
+    def test_validate_config_reads_api_key_from_keyring(self, monkeypatch):
+        """validate_config must read the API key from keyring, not hardcode a result."""
+        keyring_calls: list[tuple[str, str]] = []
+
+        monkeypatch.setattr(
+            "keyring.get_password",
+            lambda svc, user: keyring_calls.append((svc, user)) or "sk-test-key",
+        )
+
+        from signal_chain.providers.claude import ClaudeProvider
+
+        provider = ClaudeProvider()
+        result = provider.validate_config()
+
+        assert result is True, "validate_config must return True when API key is present"
+        assert len(keyring_calls) == 1, (
+            "validate_config must call keyring.get_password exactly once "
+            "to retrieve the API key rather than hardcoding True"
+        )
+
+    @_xfail
+    def test_validate_config_returns_false_when_api_key_absent(self, monkeypatch):
+        """validate_config must return False (not raise) when no key is stored."""
+        monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
+
+        from signal_chain.providers.claude import ClaudeProvider
+
+        provider = ClaudeProvider()
+        result = provider.validate_config()
+
+        assert result is False, (
+            "validate_config must return False when keyring.get_password returns None "
+            "(no API key stored for the 'claude' provider)"
+        )
+
+    @_xfail
+    def test_list_models_returns_known_claude_model_ids(self):
+        """list_models must return at least the supported Claude model family."""
+        from signal_chain.providers.base import ModelInfo
+        from signal_chain.providers.claude import ClaudeProvider
+
+        provider = ClaudeProvider()
+        models = provider.list_models()
+
+        assert len(models) > 0, "list_models must return a non-empty list of Claude models"
+        assert all(isinstance(m, ModelInfo) for m in models), (
+            "Every item in list_models must be a ModelInfo instance"
+        )
+        model_ids = {m.id for m in models}
+        known = {"claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"}
+        assert model_ids & known, (
+            f"list_models must include at least one known model ID from {known}; "
+            f"got {model_ids}"
+        )
