@@ -254,7 +254,6 @@ class TestClaudeProvider:
     All mocking targets OWNED types: ClaudeProvider._stream_tokens() and keyring.
     """
 
-    @_xfail
     def test_generate_stream_delegates_to_stream_tokens_adapter(self, monkeypatch):
         """generate_stream() must call self._stream_tokens() rather than the raw API directly."""
         from signal_chain.providers.base import GenerationConfig, Message
@@ -276,7 +275,6 @@ class TestClaudeProvider:
             "generate_stream must delegate to _stream_tokens() and yield its tokens verbatim"
         )
 
-    @_xfail
     def test_validate_config_reads_api_key_from_keyring(self, monkeypatch):
         """validate_config must read the API key from keyring, not hardcode a result."""
         keyring_calls: list[tuple[str, str]] = []
@@ -297,7 +295,6 @@ class TestClaudeProvider:
             "to retrieve the API key rather than hardcoding True"
         )
 
-    @_xfail
     def test_validate_config_returns_false_when_api_key_absent(self, monkeypatch):
         """validate_config must return False (not raise) when no key is stored."""
         monkeypatch.setattr("keyring.get_password", lambda svc, user: None)
@@ -312,7 +309,6 @@ class TestClaudeProvider:
             "(no API key stored for the 'claude' provider)"
         )
 
-    @_xfail
     def test_list_models_returns_known_claude_model_ids(self):
         """list_models must return at least the supported Claude model family."""
         from signal_chain.providers.base import ModelInfo
