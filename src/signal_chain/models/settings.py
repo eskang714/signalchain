@@ -31,6 +31,13 @@ class SettingsManager:
 
     def set_api_key(self, provider: str, key: str) -> None:
         keyring.set_password(_KEYRING_SERVICE, provider, key)
+        # Detect null backend: if get_password returns something other than the key
+        # that was just stored, the backend silently discarded the credential.
+        if keyring.get_password(_KEYRING_SERVICE, provider) != key:
+            raise RuntimeError(
+                f"Keyring null backend detected for '{provider}': credential was "
+                "silently discarded. Check your keyring backend configuration."
+            )
 
     def get_api_key(self, provider: str) -> str | None:
         return keyring.get_password(_KEYRING_SERVICE, provider)
