@@ -50,7 +50,10 @@ class ClaudeProvider(QObject):
         self._model_id = model_id
 
     def validate_config(self) -> bool:
-        key = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USER)
+        try:
+            key = keyring.get_password(_KEYRING_SERVICE, _KEYRING_USER)
+        except Exception:
+            key = None
         return bool(key)
 
     def generate_stream(
