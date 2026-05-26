@@ -29,13 +29,7 @@ FLAG TC-41 (partial): "textarea expands to show new line" is a visual layout ass
     B) Assert QPlainTextEdit height changes — brittle in headless environments.
   Recommendation: Option A. Waiting for human decision.
 """
-import pytest
 from PyQt6.QtCore import QObject, Qt, pyqtSignal
-
-_xfail = pytest.mark.xfail(
-    reason="feature not yet implemented — TDD red phase", strict=True
-)
-
 
 # Minimal test double for ConversationViewModel — used by TC-41 and TC-42 tests.
 class _FakeVM(QObject):
@@ -61,7 +55,6 @@ class _FakeVM(QObject):
 class TestTC40FileOutputViaMarkdownModule:
     """markdown_output writes files to output_dir and returns the path in its result."""
 
-    @_xfail
     def test_markdown_module_writes_file_to_output_dir(self, tmp_path):
         from signal_chain.modules.markdown_output import MarkdownOutputModule
 
@@ -79,7 +72,6 @@ class TestTC40FileOutputViaMarkdownModule:
             "markdown_output.execute('write_file') must create the file at output_dir/filename"
         )
 
-    @_xfail
     def test_markdown_module_result_contains_file_path(self, tmp_path):
         from signal_chain.modules.markdown_output import MarkdownOutputModule
 
@@ -99,7 +91,6 @@ class TestTC40FileOutputViaMarkdownModule:
         )
         assert result["file_path"], "file_path must be a non-empty string"
 
-    @_xfail
     def test_markdown_module_created_file_has_correct_content(self, tmp_path):
         from signal_chain.modules.markdown_output import MarkdownOutputModule
 
