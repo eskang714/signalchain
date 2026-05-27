@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QLabel, QMainWindow, QSplitter, QStatusBar, QWidget
 
 from signal_chain.views.conversation_list_view import ConversationListView
@@ -10,10 +10,17 @@ from signal_chain.views.conversation_view import ConversationView
 class MainWindow(QMainWindow):
     """Three-panel main application window."""
 
+    settings_requested = pyqtSignal()
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Signal Chain")
         self.resize(1200, 800)
+
+        toolbar = self.addToolBar("Main")
+        toolbar.setMovable(False)
+        settings_action = toolbar.addAction("⚙ Settings")
+        settings_action.triggered.connect(self.settings_requested)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
 

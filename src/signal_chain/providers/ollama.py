@@ -8,8 +8,9 @@ from signal_chain.providers.base import BaseProvider, GenerationConfig, Message,
 
 
 class OllamaProvider(BaseProvider):
-    def __init__(self) -> None:
-        self._client = ollama.Client()
+    def __init__(self, base_url: str | None = None) -> None:
+        url = base_url or "http://localhost:11434"
+        self._client = ollama.Client(host=url)
         self._model_id: str = ""
 
     def list_models(self) -> list[ModelInfo]:

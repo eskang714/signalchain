@@ -8,13 +8,17 @@ from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 
 from signal_chain.models.config import AppConfig
 from signal_chain.models.conversation import Conversation, ConversationLoader
+from signal_chain.models.settings import SettingsManager
+from signal_chain.providers.claude import ClaudeProvider
 from signal_chain.providers.ollama import OllamaProvider
 from signal_chain.viewmodels.conversation import ConversationViewModel
 from signal_chain.viewmodels.startup import StartupViewModel
 from signal_chain.views.main_window import MainWindow
+from signal_chain.views.settings_dialog import SettingsDialog
 from signal_chain.views.startup_wizard import StartupWizard
 
 _CONFIG_PATH = Path.home() / ".config" / "signalchain" / "config.yaml"
+_SETTINGS_PATH = Path.home() / ".config" / "signalchain" / "settings.yaml"
 
 
 class Application:
@@ -26,6 +30,7 @@ class Application:
         self._vm: ConversationViewModel | None = None
         self._conversation: Conversation | None = None
         self._conv_dir: Path | None = None
+        self._settings: SettingsManager | None = None
 
     def run(self) -> int:
         self._startup_vm.wizard_required.connect(self._on_wizard_required)
@@ -77,14 +82,25 @@ class Application:
         config = AppConfig.from_yaml(_CONFIG_PATH)
         self._conv_dir = config.conversation_dir
 
+        settings = SettingsManager.load(_SETTINGS_PATH)
+        self._settings = settings
+
         # Provider setup
-        provider = self._provider_override or OllamaProvider()
+        if self._provider_override:
+            provider = self._provider_override
+        else:
+            claude = ClaudeProvider()
+            if claude.validate_config():
+                provider = claude
+            else:
+                provider = OllamaProvider(base_url=settings.get_ollama_url())
+
         model_id = ""
         if not provider.validate_config():
             QMessageBox.warning(
                 None,
-                "Ollama Not Running",
-                "Ollama is not running. Start Ollama and restart Signal Chain.\n\n"
+                "Provider Not Available",
+                "No provider is currently available. Configure an API key or start Ollama.\n\n"
                 "You can still view saved conversations.",
             )
         else:
@@ -127,6 +143,7 @@ class Application:
         self._main_window.conversation_list.conversation_selected.connect(
             self._on_conversation_selected
         )
+        self._main_window.settings_requested.connect(self._on_settings_requested)
 
         self._main_window.show()
 
@@ -179,6 +196,12 @@ class Application:
             title = conv.metadata.title or conv.conversation_id
             items.append((conv.conversation_id, title))
         self._main_window.conversation_list.load_conversations(items)
+
+    def _on_settings_requested(self) -> None:
+        if self._settings is None or self._main_window is None:
+            return
+        dialog = SettingsDialog(self._settings, parent=self._main_window)
+        dialog.exec()
 
     # ------------------------------------------------------------------
     # Helpers
