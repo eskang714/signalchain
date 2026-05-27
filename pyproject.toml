@@ -15,6 +15,7 @@ dependencies = [
     "pyyaml",
     "psutil",
     "openai>=2.38.0",
+    "groq>=1.2.0",
 ]
 
 [project.optional-dependencies]
