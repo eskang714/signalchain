@@ -38,6 +38,16 @@ class SettingsDialog(QDialog):
         self._openrouter_key_input.setText(or_key)
         form.addRow("OpenRouter API Key", self._openrouter_key_input)
 
+        self._groq_key_input = QLineEdit()
+        self._groq_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._groq_key_input.setPlaceholderText("gsk_... (get free key at console.groq.com)")
+        try:
+            groq_key = settings.get_api_key("groq") or ""
+        except Exception:
+            groq_key = ""
+        self._groq_key_input.setText(groq_key)
+        form.addRow("Groq API Key", self._groq_key_input)
+
         self._api_key_input = QLineEdit()
         self._api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self._api_key_input.setPlaceholderText("sk-ant-...")
@@ -76,6 +86,13 @@ class SettingsDialog(QDialog):
         if or_key:
             try:
                 self._settings.set_api_key("openrouter", or_key)
+            except Exception:
+                pass
+
+        groq_key = self._groq_key_input.text().strip()
+        if groq_key:
+            try:
+                self._settings.set_api_key("groq", groq_key)
             except Exception:
                 pass
 
