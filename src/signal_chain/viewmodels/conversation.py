@@ -67,6 +67,9 @@ class ConversationViewModel(BaseViewModel):
         self._thread: _GenerationThread | None = None
         self._last_text: str | None = None
 
+    def set_provider(self, provider: object) -> None:
+        self._provider = provider  # type: ignore[assignment]
+
     def send_message(self, text: str) -> str:
         if self.is_generating:
             return "queued"
