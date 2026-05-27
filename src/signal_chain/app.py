@@ -11,6 +11,7 @@ from signal_chain.models.conversation import Conversation, ConversationLoader
 from signal_chain.models.settings import SettingsManager
 from signal_chain.providers.claude import ClaudeProvider
 from signal_chain.providers.ollama import OllamaProvider
+from signal_chain.providers.openrouter import OpenRouterProvider
 from signal_chain.viewmodels.conversation import ConversationViewModel
 from signal_chain.viewmodels.startup import StartupViewModel
 from signal_chain.views.main_window import MainWindow
@@ -85,15 +86,19 @@ class Application:
         settings = SettingsManager.load(_SETTINGS_PATH)
         self._settings = settings
 
-        # Provider setup
+        # Provider setup — priority: OpenRouter > Claude > Ollama
         if self._provider_override:
             provider = self._provider_override
         else:
-            claude = ClaudeProvider()
-            if claude.validate_config():
-                provider = claude
+            or_provider = OpenRouterProvider()
+            if or_provider.validate_config():
+                provider = or_provider
             else:
-                provider = OllamaProvider(base_url=settings.get_ollama_url())
+                claude = ClaudeProvider()
+                if claude.validate_config():
+                    provider = claude
+                else:
+                    provider = OllamaProvider(base_url=settings.get_ollama_url())
 
         model_id = ""
         if not provider.validate_config():

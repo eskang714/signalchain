@@ -24,9 +24,19 @@ class SettingsDialog(QDialog):
         self._settings = settings
         self.setWindowTitle("Settings")
         self.setModal(True)
-        self.resize(440, 160)
+        self.resize(440, 200)
 
         form = QFormLayout()
+
+        self._openrouter_key_input = QLineEdit()
+        self._openrouter_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._openrouter_key_input.setPlaceholderText("sk-or-... (get free key at openrouter.ai)")
+        try:
+            or_key = settings.get_api_key("openrouter") or ""
+        except Exception:
+            or_key = ""
+        self._openrouter_key_input.setText(or_key)
+        form.addRow("OpenRouter API Key", self._openrouter_key_input)
 
         self._api_key_input = QLineEdit()
         self._api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
@@ -62,6 +72,13 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def _on_save(self) -> None:
+        or_key = self._openrouter_key_input.text().strip()
+        if or_key:
+            try:
+                self._settings.set_api_key("openrouter", or_key)
+            except Exception:
+                pass
+
         api_key = self._api_key_input.text().strip()
         if api_key:
             try:
