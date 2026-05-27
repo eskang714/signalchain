@@ -151,6 +151,15 @@ class ConversationLoader:
         return result, errors
 
     @staticmethod
+    def delete(conv_id: str, directory: Path) -> bool:
+        """Delete the conversation JSON file. Returns True if deleted."""
+        path = directory / f"{conv_id}.json"
+        if path.exists():
+            path.unlink()
+            return True
+        return False
+
+    @staticmethod
     def search(directory: Path, query: str) -> list[Conversation]:
         conversations = ConversationLoader.load_all(directory)
         if not query:

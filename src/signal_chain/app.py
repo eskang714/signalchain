@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 from signal_chain.models.config import AppConfig
 from signal_chain.models.conversation import Conversation, ConversationLoader
 from signal_chain.models.settings import SettingsManager
+from signal_chain.modules.markdown_output import MarkdownOutputModule
 from signal_chain.providers.claude import ClaudeProvider
 from signal_chain.providers.groq_provider import GroqProvider
 from signal_chain.providers.ollama import OllamaProvider
@@ -150,7 +151,16 @@ class Application:
         self._main_window.conversation_list.conversation_selected.connect(
             self._on_conversation_selected
         )
+        self._main_window.conversation_list.search_requested.connect(self._on_search_requested)
+        self._main_window.conversation_list.rename_requested.connect(self._on_rename_requested)
+        self._main_window.conversation_list.delete_requested.connect(self._on_delete_requested)
         self._main_window.settings_requested.connect(self._on_settings_requested)
+        self._main_window.conversation_view.export_requested.connect(self._on_export_requested)
+
+        # Module panel
+        self._main_window.set_modules(
+            ["Conversation History", "Connected Accounts", "Markdown Output"]
+        )
 
         # Provider/model dropdowns (skip in override/test mode)
         if not self._provider_override:
@@ -173,6 +183,10 @@ class Application:
             return
         if self._vm.response_text:
             self._conversation.add_message(role="assistant", content=self._vm.response_text)
+        if not self._conversation.metadata.title:
+            user_msgs = [m for m in self._conversation.messages if m.role == "user"]
+            if user_msgs:
+                self._conversation.metadata.title = user_msgs[0].content[:50]
         try:
             ConversationLoader.save(self._conversation, self._conv_dir)
             self._refresh_conversation_list()
@@ -204,11 +218,64 @@ class Application:
     def _refresh_conversation_list(self) -> None:
         if self._main_window is None or self._conv_dir is None:
             return
-        items = []
-        for conv in ConversationLoader.load_all(self._conv_dir):
-            title = conv.metadata.title or conv.conversation_id
-            items.append((conv.conversation_id, title))
+        items = [
+            (conv.conversation_id, conv.metadata.title or conv.conversation_id, conv.created)
+            for conv in ConversationLoader.load_all(self._conv_dir)
+        ]
         self._main_window.conversation_list.load_conversations(items)
+
+    def _on_search_requested(self, query: str) -> None:
+        if self._conv_dir is None or self._main_window is None:
+            return
+        if query:
+            convs = ConversationLoader.search(self._conv_dir, query)
+        else:
+            convs = ConversationLoader.load_all(self._conv_dir)
+        items = [
+            (c.conversation_id, c.metadata.title or c.conversation_id, c.created)
+            for c in convs
+        ]
+        self._main_window.conversation_list.load_conversations(items)
+
+    def _on_rename_requested(self, conv_id: str, new_title: str) -> None:
+        if self._conv_dir is None:
+            return
+        for path in self._conv_dir.glob("*.json"):
+            try:
+                conv = ConversationLoader.load(path)
+            except Exception:
+                continue
+            if conv.conversation_id == conv_id:
+                conv.metadata.title = new_title
+                ConversationLoader.save(conv, self._conv_dir)
+                break
+        self._refresh_conversation_list()
+
+    def _on_delete_requested(self, conv_id: str) -> None:
+        if self._conv_dir is not None:
+            ConversationLoader.delete(conv_id, self._conv_dir)
+            self._refresh_conversation_list()
+
+    def _on_export_requested(self) -> None:
+        if self._conversation is None:
+            return
+        parts = []
+        for m in self._conversation.messages:
+            prefix = "You" if m.role == "user" else "Assistant"
+            parts.append(f"## {prefix}\n\n{m.content}")
+        content = "\n\n---\n\n".join(parts)
+        if not content:
+            return
+        config = AppConfig.from_yaml(_CONFIG_PATH)
+        module = MarkdownOutputModule(output_dir=config.output_dir)
+        module.initialize()
+        result = module.execute(
+            "write_file",
+            {"filename": f"{self._conversation.conversation_id}.md", "content": content},
+        )
+        path = result.get("file_path", "")
+        if self._main_window and path:
+            self._main_window.set_status(f"Exported to {path}")
 
     # ------------------------------------------------------------------
     # Provider management
