@@ -19,7 +19,7 @@ class OpenRouterProvider(QObject):
 
     MAX_RETRIES = 3
 
-    def __init__(self, model_id: str = "meta-llama/llama-3.3-70b-instruct:free") -> None:
+    def __init__(self, model_id: str = "openrouter/free") -> None:
         super().__init__()
         self._model_id = model_id
 
@@ -36,24 +36,12 @@ class OpenRouterProvider(QObject):
             model=self._model_id,
             messages=messages,
             stream=True,
+            max_tokens=4096,
         ):
             yield chunk.choices[0].delta.content or ""
 
     def list_models(self) -> list[ModelInfo]:
-        return [
-            ModelInfo(
-                id="meta-llama/llama-3.3-70b-instruct:free",
-                name="Llama 3.3 70B Instruct (free)",
-            ),
-            ModelInfo(
-                id="mistralai/mistral-7b-instruct:free",
-                name="Mistral 7B Instruct (free)",
-            ),
-            ModelInfo(
-                id="google/gemma-3-9b-it:free",
-                name="Gemma 3 9B IT (free)",
-            ),
-        ]
+        return [ModelInfo(id="openrouter/free", name="Auto (Free)")]
 
     def load_model(self, model_id: str) -> None:
         self._model_id = model_id
