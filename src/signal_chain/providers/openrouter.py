@@ -41,24 +41,7 @@ class OpenRouterProvider(QObject):
             yield chunk.choices[0].delta.content or ""
 
     def list_models(self) -> list[ModelInfo]:
-        return [
-            ModelInfo(
-                id="openrouter/free",
-                name="Auto-router (free)",
-            ),
-            ModelInfo(
-                id="meta-llama/llama-3.3-70b-instruct:free",
-                name="Llama 3.3 70B Instruct (free)",
-            ),
-            ModelInfo(
-                id="mistralai/mistral-7b-instruct:free",
-                name="Mistral 7B Instruct (free)",
-            ),
-            ModelInfo(
-                id="deepseek/deepseek-chat-v3-0324:free",
-                name="DeepSeek Chat V3 (free)",
-            ),
-        ]
+        return [ModelInfo(id="openrouter/free", name="Auto (Free)")]
 
     def load_model(self, model_id: str) -> None:
         self._model_id = model_id
