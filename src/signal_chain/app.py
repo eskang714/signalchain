@@ -11,6 +11,7 @@ from signal_chain.models.conversation import Conversation, ConversationLoader
 from signal_chain.models.settings import SettingsManager
 from signal_chain.modules.markdown_output import MarkdownOutputModule
 from signal_chain.providers.claude import ClaudeProvider
+from signal_chain.providers.gemini_provider import GeminiProvider
 from signal_chain.providers.groq_provider import GroqProvider
 from signal_chain.providers.ollama import OllamaProvider
 from signal_chain.providers.openrouter import OpenRouterProvider
@@ -298,6 +299,9 @@ class Application:
         groq_p = GroqProvider()
         if groq_p.validate_config():
             result.append(("groq", "Groq", groq_p))
+        gemini_p = GeminiProvider()
+        if gemini_p.validate_config():
+            result.append(("gemini", "Gemini", gemini_p))
         url = self._settings.get_ollama_url() if self._settings else None
         ollama_p = OllamaProvider(base_url=url)
         if ollama_p.validate_config():
