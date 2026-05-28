@@ -41,11 +41,6 @@ class ConversationView(QWidget):
         # Message display
         self._display = QTextEdit()
         self._display.setReadOnly(True)
-        self._display.document().setDefaultStyleSheet(
-            "code { font-family: monospace; background-color: #f4f4f4; padding: 2px 4px; }"
-            " pre { font-family: monospace; background-color: #f4f4f4; padding: 8px; }"
-            " h1, h2, h3 { margin-top: 8px; margin-bottom: 4px; }"
-        )
 
         # Find bar (Ctrl+F)
         self._find_input = QLineEdit()
@@ -150,16 +145,71 @@ class ConversationView(QWidget):
         self._current_response = ""
         self._render_all_messages()
 
+    _CSS = """
+<style>
+body {
+  font-family: -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 6px;
+  padding: 0;
+}
+h1 { font-size: 1.4em; margin: 12px 0 4px; }
+h2 { font-size: 1.2em; margin: 10px 0 4px; }
+h3 { font-size: 1.05em; margin: 8px 0 4px; }
+code {
+  font-family: 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  background: rgba(128,128,128,0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+pre {
+  background: rgba(128,128,128,0.12);
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+pre code { background: none; padding: 0; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+th, td {
+  border: 1px solid rgba(128,128,128,0.4);
+  padding: 5px 10px;
+  text-align: left;
+}
+th { font-weight: bold; }
+blockquote {
+  border-left: 3px solid rgba(128,128,128,0.5);
+  margin: 6px 0;
+  padding-left: 12px;
+  opacity: 0.8;
+}
+hr { border: none; border-top: 1px solid rgba(128,128,128,0.3); }
+</style>
+"""
+
     def _render_all_messages(self) -> None:
         """Rebuild the display: user messages as escaped text, assistant as Markdown HTML."""
+        import markdown as md_lib
+
         parts: list[str] = []
         for role, content in self._display_messages:
             if role == "assistant":
                 try:
-                    import markdown as _md
-                    body = _md.markdown(
+                    body = md_lib.markdown(
                         content,
-                        extensions=["fenced_code", "tables", "codehilite"],
+                        extensions=[
+                            "fenced_code",
+                            "tables",
+                            "codehilite",
+                            "nl2br",
+                            "sane_lists",
+                        ],
                     )
                 except Exception:
                     escaped = (
@@ -176,7 +226,11 @@ class ConversationView(QWidget):
                     .replace(">", "&gt;")
                 )
                 parts.append(f"<p><b>You:</b> {escaped}</p>")
-        self._display.setHtml("".join(parts))
+        full_html = (
+            f"<html><head>{self._CSS}</head>"
+            f"<body>{''.join(parts)}</body></html>"
+        )
+        self._display.setHtml(full_html)
         QTimer.singleShot(0, lambda: self._display.verticalScrollBar().setValue(
             self._display.verticalScrollBar().maximum()
         ))
