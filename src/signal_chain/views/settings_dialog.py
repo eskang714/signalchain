@@ -48,6 +48,19 @@ class SettingsDialog(QDialog):
         self._groq_key_input.setText(groq_key)
         form.addRow("Groq API Key", self._groq_key_input)
 
+        self._gemini_key_input = QLineEdit()
+        self._gemini_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._gemini_key_input.setPlaceholderText(
+            "AIza... (get free key at aistudio.google.com"
+            " — add key restrictions before June 19, 2026)"
+        )
+        try:
+            gemini_key = settings.get_api_key("gemini") or ""
+        except Exception:
+            gemini_key = ""
+        self._gemini_key_input.setText(gemini_key)
+        form.addRow("Gemini API Key", self._gemini_key_input)
+
         self._api_key_input = QLineEdit()
         self._api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self._api_key_input.setPlaceholderText("sk-ant-...")
@@ -93,6 +106,13 @@ class SettingsDialog(QDialog):
         if groq_key:
             try:
                 self._settings.set_api_key("groq", groq_key)
+            except Exception:
+                pass
+
+        gemini_key = self._gemini_key_input.text().strip()
+        if gemini_key:
+            try:
+                self._settings.set_api_key("gemini", gemini_key)
             except Exception:
                 pass
 
