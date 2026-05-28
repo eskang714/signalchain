@@ -143,26 +143,29 @@ class ConversationListView(QWidget):
 
     def _start_rename(self, item: QListWidgetItem) -> None:
         original_title = item.text().strip()
-        # Remove indentation added by date grouping before entering edit mode.
-        # Set text before _renaming_conv_id so the itemChanged guard ignores it.
+        # setText and setFlags both fire itemChanged. Keep _renaming_conv_id=None
+        # until both are done so the guard in _on_item_changed ignores them.
         item.setText(original_title)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
         self._renaming_conv_id = item.data(_USER_ROLE)
         self._original_title = original_title
-        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
         self._list.editItem(item)
 
     def _on_item_changed(self, item: QListWidgetItem) -> None:
         conv_id = item.data(_USER_ROLE)
         if not conv_id or conv_id != self._renaming_conv_id:
             return
-        self._renaming_conv_id = None  # clear first to prevent re-entry
+        self._renaming_conv_id = None
+        original = self._original_title
+        self._original_title = ""
+        # Remove editable flag BEFORE emitting rename_requested — the signal may
+        # trigger load_conversations() which deletes this item from the list.
+        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         new_title = item.text().strip()
-        if new_title and new_title != self._original_title:
+        if new_title and new_title != original:
             self.rename_requested.emit(conv_id, new_title)
         elif not new_title:
-            item.setText(self._original_title)
-        item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-        self._original_title = ""
+            item.setText(original)  # item still valid; rename_requested not emitted
 
     def _confirm_delete(self, item: QListWidgetItem) -> None:
         conv_id = item.data(_USER_ROLE)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QKeyEvent, QKeySequence, QShortcut, QTextDocument
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
@@ -38,6 +39,36 @@ class ConversationView(QWidget):
         # Message display
         self._display = QTextEdit()
         self._display.setReadOnly(True)
+
+        # Find bar (Ctrl+F)
+        self._find_input = QLineEdit()
+        self._find_input.setPlaceholderText("Find in chat…")
+        self._find_input.textChanged.connect(self._on_find_text_changed)
+        self._find_input.installEventFilter(self)
+        self._find_prev_btn = QPushButton("▲")
+        self._find_prev_btn.setFixedWidth(28)
+        self._find_prev_btn.setToolTip("Previous match")
+        self._find_prev_btn.clicked.connect(self._find_prev)
+        self._find_next_btn = QPushButton("▼")
+        self._find_next_btn.setFixedWidth(28)
+        self._find_next_btn.setToolTip("Next match")
+        self._find_next_btn.clicked.connect(self._find_next)
+        self._find_close_btn = QPushButton("✕")
+        self._find_close_btn.setFixedWidth(28)
+        self._find_close_btn.clicked.connect(self._hide_find_bar)
+        find_bar_layout = QHBoxLayout()
+        find_bar_layout.setContentsMargins(4, 2, 4, 2)
+        find_bar_layout.addWidget(QLabel("Find:"))
+        find_bar_layout.addWidget(self._find_input)
+        find_bar_layout.addWidget(self._find_prev_btn)
+        find_bar_layout.addWidget(self._find_next_btn)
+        find_bar_layout.addWidget(self._find_close_btn)
+        self._find_bar = QWidget()
+        self._find_bar.setLayout(find_bar_layout)
+        self._find_bar.setVisible(False)
+
+        find_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        find_shortcut.activated.connect(self._show_find_bar)
 
         # Warning label (module errors)
         self._warning_label = QLabel("")
@@ -83,6 +114,7 @@ class ConversationView(QWidget):
         layout = QVBoxLayout()
         layout.addLayout(toolbar_row)
         layout.addWidget(self._display)
+        layout.addWidget(self._find_bar)
         layout.addWidget(self._warning_widget)
         layout.addWidget(self._countdown_label)
         layout.addWidget(self._retry_btn)
@@ -126,6 +158,42 @@ class ConversationView(QWidget):
             self._vm.retry_last_message()
         self._retry_btn.setVisible(False)
 
+    def _show_find_bar(self) -> None:
+        self._find_bar.setVisible(True)
+        self._find_input.setFocus()
+        self._find_input.selectAll()
+
+    def _hide_find_bar(self) -> None:
+        self._find_bar.setVisible(False)
+        self._find_input.clear()
+        self._display.find("")  # clear highlight
+
+    def _on_find_text_changed(self, term: str) -> None:
+        if term:
+            self._run_find(term, backward=False)
+        else:
+            self._display.find("")
+            self._find_input.setStyleSheet("")
+
+    def _find_next(self) -> None:
+        self._run_find(self._find_input.text(), backward=False)
+
+    def _find_prev(self) -> None:
+        self._run_find(self._find_input.text(), backward=True)
+
+    def _run_find(self, term: str, *, backward: bool) -> None:
+        if not term:
+            return
+        flags = QTextDocument.FindFlag(0)
+        if backward:
+            flags = QTextDocument.FindFlag.FindBackward
+        found = self._display.find(term, flags)
+        if not found:
+            self._find_input.setStyleSheet("background-color: #ffcccc;")
+            QTimer.singleShot(500, lambda: self._find_input.setStyleSheet(""))
+        else:
+            self._find_input.setStyleSheet("")
+
     def _dismiss_warning(self) -> None:
         self._warning_widget.setVisible(False)
 
@@ -168,12 +236,20 @@ class ConversationView(QWidget):
             self._countdown_label.setVisible(False)
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if obj is self._input and event.type() == QEvent.Type.KeyPress:
+        if event.type() == QEvent.Type.KeyPress:
             key_event: QKeyEvent = event  # type: ignore[assignment]
-            if (
-                key_event.key() == Qt.Key.Key_Return
-                and not (key_event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
-            ):
-                self._send()
-                return True
+            if obj is self._input:
+                if (
+                    key_event.key() == Qt.Key.Key_Return
+                    and not (key_event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+                ):
+                    self._send()
+                    return True
+            elif obj is self._find_input:
+                if key_event.key() == Qt.Key.Key_Escape:
+                    self._hide_find_bar()
+                    return True
+                if key_event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                    self._find_next()
+                    return True
         return super().eventFilter(obj, event)
