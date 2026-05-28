@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QLabel, QMainWindow, QSplitter, QStatusBar, QWidget
+from PyQt6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QMainWindow, QSplitter, QStatusBar, QWidget
 
 from signal_chain.views.conversation_list_view import ConversationListView
 from signal_chain.views.conversation_view import ConversationView
@@ -46,11 +46,10 @@ class MainWindow(QMainWindow):
         self.conversation_view = ConversationView()
         splitter.addWidget(self.conversation_view)
 
-        placeholder = QLabel("Module panel\n— coming soon —")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder.setMinimumWidth(180)
-        placeholder.setMaximumWidth(360)
-        splitter.addWidget(placeholder)
+        self._module_panel = QListWidget()
+        self._module_panel.setMinimumWidth(180)
+        self._module_panel.setMaximumWidth(360)
+        splitter.addWidget(self._module_panel)
 
         splitter.setSizes([260, 660, 280])
         splitter.setStretchFactor(1, 1)
@@ -60,6 +59,14 @@ class MainWindow(QMainWindow):
         self._status_bar = QStatusBar()
         self.setStatusBar(self._status_bar)
         self._status_bar.showMessage("Ready")
+
+    def set_modules(self, names: list[str]) -> None:
+        """Populate module panel with active global module names."""
+        self._module_panel.clear()
+        for name in names:
+            item = QListWidgetItem(f"✓ {name}")
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self._module_panel.addItem(item)
 
     def set_status(self, message: str) -> None:
         self._status_bar.showMessage(message)

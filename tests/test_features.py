@@ -37,6 +37,9 @@ class _FakeVM(QObject):
     generation_started = pyqtSignal()
     generation_complete = pyqtSignal()
     generation_error = pyqtSignal(str)
+    retry_available = pyqtSignal()
+    module_error = pyqtSignal(str)
+    countdown_tick = pyqtSignal(int)
 
     def __init__(self) -> None:
         super().__init__()
@@ -46,6 +49,12 @@ class _FakeVM(QObject):
     def send_message(self, text: str) -> str:
         self.send_message_calls.append(text)
         return "sent"
+
+    def cancel_generation(self) -> None:
+        pass
+
+    def retry_last_message(self) -> str:
+        return "queued"
 
 
 # ---------------------------------------------------------------------------

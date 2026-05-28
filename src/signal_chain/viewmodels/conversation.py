@@ -31,10 +31,16 @@ class _GenerationThread(QThread):
         self._provider = provider
         self._messages = messages
         self._config = config
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
 
     def run(self) -> None:
         try:
             for tok in self._provider.generate_stream(self._messages, self._config):
+                if self._cancelled:
+                    break
                 self.token.emit(tok)
             self.generation_finished.emit()
         except Exception as exc:
@@ -69,6 +75,10 @@ class ConversationViewModel(BaseViewModel):
 
     def set_provider(self, provider: object) -> None:
         self._provider = provider  # type: ignore[assignment]
+
+    def cancel_generation(self) -> None:
+        if self._thread is not None:
+            self._thread.cancel()
 
     def send_message(self, text: str) -> str:
         if self.is_generating:
