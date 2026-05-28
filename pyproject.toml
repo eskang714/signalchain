@@ -20,7 +20,7 @@ dependencies = [
     "pygments>=2.20.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-qt",
@@ -39,3 +39,6 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[project.scripts]
+signal-chain = "signal_chain.__main__:main"
