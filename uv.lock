@@ -981,6 +981,7 @@ dependencies = [
     { name = "ollama" },
     { name = "openai" },
     { name = "psutil" },
+    { name = "pygments" },
     { name = "pyqt6" },
     { name = "pyyaml" },
 ]
@@ -1003,6 +1004,7 @@ requires-dist = [
     { name = "ollama" },
     { name = "openai", specifier = ">=2.38.0" },
     { name = "psutil" },
+    { name = "pygments", specifier = ">=2.20.0" },
     { name = "pyqt6" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
