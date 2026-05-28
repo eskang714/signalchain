@@ -46,7 +46,7 @@ class GeminiProvider(QObject):
     def list_models(self) -> list[ModelInfo]:
         return [
             ModelInfo(id="gemini-2.5-flash", name="Gemini 2.5 Flash"),
-            ModelInfo(id="gemini-2.0-flash", name="Gemini 2.0 Flash"),
+            ModelInfo(id="gemini-2.5-flash-lite", name="Gemini 2.5 Flash Lite"),
         ]
 
     def load_model(self, model_id: str) -> None:
