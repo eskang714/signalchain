@@ -16,6 +16,7 @@ dependencies = [
     "psutil",
     "openai>=2.38.0",
     "groq>=1.2.0",
+    "markdown>=3.0",
 ]
 
 [project.optional-dependencies]

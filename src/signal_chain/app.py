@@ -123,6 +123,7 @@ class Application:
             (n for n, _, p in self._available_providers if p is provider), "ollama"
         )
         self._conversation = Conversation.create(provider=active_name, model_id=model_id)
+        self._vm.set_conversation(self._conversation)
 
         # Main window
         self._main_window = MainWindow()
@@ -197,6 +198,8 @@ class Application:
         if self._vm is None:
             return
         self._conversation = Conversation.create(provider="ollama", model_id="")
+        if self._vm is not None:
+            self._vm.set_conversation(self._conversation)
         if self._main_window is not None:
             self._main_window.conversation_view.clear_display()
 
@@ -210,6 +213,8 @@ class Application:
                 continue
             if conv.conversation_id == conv_id:
                 self._conversation = conv
+                if self._vm is not None:
+                    self._vm.set_conversation(conv)
                 self._main_window.conversation_view.show_conversation(
                     [(m.role, m.content) for m in conv.messages]
                 )

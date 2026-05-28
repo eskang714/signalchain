@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from signal_chain.models.context import ContextWindowManager
 from signal_chain.providers.base import BaseProvider, GenerationConfig, Message
 from signal_chain.viewmodels.base import BaseViewModel
+
+if TYPE_CHECKING:
+    from signal_chain.models.conversation import Conversation
 
 
 class _GenerationThread(QThread):
@@ -72,9 +76,14 @@ class ConversationViewModel(BaseViewModel):
         self.error_state: str = ""
         self._thread: _GenerationThread | None = None
         self._last_text: str | None = None
+        self._conversation: Conversation | None = None
+        self._context_mgr: ContextWindowManager = ContextWindowManager()
 
     def set_provider(self, provider: object) -> None:
         self._provider = provider  # type: ignore[assignment]
+
+    def set_conversation(self, conv: Conversation | None) -> None:
+        self._conversation = conv
 
     def cancel_generation(self) -> None:
         if self._thread is not None:
@@ -84,16 +93,30 @@ class ConversationViewModel(BaseViewModel):
         if self.is_generating:
             return "queued"
         self._last_text = text
-        self._start_generation([Message(role="user", content=text)], GenerationConfig())
+        messages = self._build_messages()
+        if not messages:
+            messages = [Message(role="user", content=text)]
+        self._start_generation(messages, GenerationConfig())
         return "sent"
 
     def retry_last_message(self) -> str:
         if self._last_text is None or self.is_generating:
             return "queued"
-        self._start_generation(
-            [Message(role="user", content=self._last_text)], GenerationConfig()
-        )
+        messages = self._build_messages()
+        if not messages:
+            messages = [Message(role="user", content=self._last_text)]
+        self._start_generation(messages, GenerationConfig())
         return "sent"
+
+    def _build_messages(self) -> list[Message]:
+        """Build context-windowed message list from the current conversation."""
+        if self._conversation is None or not self._conversation.messages:
+            return []
+        history = [
+            Message(role=m.role, content=m.content)
+            for m in self._conversation.messages
+        ]
+        return self._context_mgr.prepare_messages(history)
 
     def _start_generation(
         self, messages: list[Message], config: GenerationConfig
