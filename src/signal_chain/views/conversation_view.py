@@ -28,6 +28,8 @@ class ConversationView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._vm: ConversationViewModel | None = None
+        self._display_messages: list[tuple[str, str]] = []  # (role, content)
+        self._current_response: str = ""
 
         # Toolbar row
         self._export_btn = QPushButton("Export")
@@ -39,6 +41,11 @@ class ConversationView(QWidget):
         # Message display
         self._display = QTextEdit()
         self._display.setReadOnly(True)
+        self._display.document().setDefaultStyleSheet(
+            "code { font-family: monospace; background-color: #f4f4f4; padding: 2px 4px; }"
+            " pre { font-family: monospace; background-color: #f4f4f4; padding: 8px; }"
+            " h1, h2, h3 { margin-top: 8px; margin-bottom: 4px; }"
+        )
 
         # Find bar (Ctrl+F)
         self._find_input = QLineEdit()
@@ -133,14 +140,46 @@ class ConversationView(QWidget):
         self.stop_requested.connect(vm.cancel_generation)
 
     def clear_display(self) -> None:
+        self._display_messages = []
+        self._current_response = ""
         self._display.clear()
 
     def show_conversation(self, messages: list[tuple[str, str]]) -> None:
-        """Display a loaded conversation. messages: [(role, content), ...]"""
-        self._display.clear()
-        for role, content in messages:
-            prefix = "You" if role == "user" else "Assistant"
-            self._display.append(f"{prefix}: {content}\n")
+        """Display a loaded conversation with Markdown rendering for assistant messages."""
+        self._display_messages = list(messages)
+        self._current_response = ""
+        self._render_all_messages()
+
+    def _render_all_messages(self) -> None:
+        """Rebuild the display: user messages as escaped text, assistant as Markdown HTML."""
+        parts: list[str] = []
+        for role, content in self._display_messages:
+            if role == "assistant":
+                try:
+                    import markdown as _md
+                    body = _md.markdown(
+                        content,
+                        extensions=["fenced_code", "tables", "codehilite"],
+                    )
+                except Exception:
+                    escaped = (
+                        content.replace("&", "&amp;")
+                        .replace("<", "&lt;")
+                        .replace(">", "&gt;")
+                    )
+                    body = f"<pre>{escaped}</pre>"
+                parts.append(f"<p><b>Assistant:</b></p>{body}<hr/>")
+            else:
+                escaped = (
+                    content.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                )
+                parts.append(f"<p><b>You:</b> {escaped}</p>")
+        self._display.setHtml("".join(parts))
+        QTimer.singleShot(0, lambda: self._display.verticalScrollBar().setValue(
+            self._display.verticalScrollBar().maximum()
+        ))
 
     def _send(self) -> None:
         if self._vm is None:
@@ -148,6 +187,7 @@ class ConversationView(QWidget):
         text = self._input.toPlainText().strip()
         if not text:
             return
+        self._display_messages.append(("user", text))
         self._display.append(f"You: {text}")
         self._input.clear()
         self.message_submitted.emit(text)
@@ -198,6 +238,7 @@ class ConversationView(QWidget):
         self._warning_widget.setVisible(False)
 
     def _on_token(self, tok: str) -> None:
+        self._current_response += tok
         cursor = self._display.textCursor()
         cursor.movePosition(cursor.MoveOperation.End)
         self._display.setTextCursor(cursor)
@@ -205,6 +246,7 @@ class ConversationView(QWidget):
         self._display.ensureCursorVisible()
 
     def _on_generation_started(self) -> None:
+        self._current_response = ""
         self._display.append("Assistant: ")
         self._send_btn.setEnabled(False)
         self._stop_btn.setVisible(True)
@@ -212,11 +254,15 @@ class ConversationView(QWidget):
         self._countdown_label.setVisible(False)
 
     def _on_generation_complete(self) -> None:
-        self._display.append("")
+        if self._current_response:
+            self._display_messages.append(("assistant", self._current_response))
+        self._current_response = ""
+        self._render_all_messages()
         self._send_btn.setEnabled(True)
         self._stop_btn.setVisible(False)
 
     def _on_error(self, message: str) -> None:
+        self._current_response = ""
         self._display.append(f"[Error: {message}]")
         self._send_btn.setEnabled(True)
         self._stop_btn.setVisible(False)
