@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QMainWindow, QSplitter, QStatusBar, QWidget
+from PyQt6.QtWidgets import QComboBox, QMainWindow, QSplitter, QStatusBar, QVBoxLayout, QWidget
 
 from signal_chain.views.conversation_list_view import ConversationListView
 from signal_chain.views.conversation_view import ConversationView
+from signal_chain.views.pedalboard_view import Pedalboard
+from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
 
 class MainWindow(QMainWindow):
@@ -46,27 +48,24 @@ class MainWindow(QMainWindow):
         self.conversation_view = ConversationView()
         splitter.addWidget(self.conversation_view)
 
-        self._module_panel = QListWidget()
-        self._module_panel.setMinimumWidth(180)
-        self._module_panel.setMaximumWidth(360)
-        splitter.addWidget(self._module_panel)
-
-        splitter.setSizes([260, 660, 280])
+        splitter.setSizes([260, 940])
         splitter.setStretchFactor(1, 1)
 
-        self.setCentralWidget(splitter)
+        self._pedalboard_vm = PedalboardViewModel()
+        self.pedalboard = Pedalboard(self._pedalboard_vm)
+
+        central = QWidget()
+        vbox = QVBoxLayout()
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(0)
+        vbox.addWidget(splitter, stretch=1)
+        vbox.addWidget(self.pedalboard, stretch=0)
+        central.setLayout(vbox)
+        self.setCentralWidget(central)
 
         self._status_bar = QStatusBar()
         self.setStatusBar(self._status_bar)
         self._status_bar.showMessage("Ready")
-
-    def set_modules(self, names: list[str]) -> None:
-        """Populate module panel with active global module names."""
-        self._module_panel.clear()
-        for name in names:
-            item = QListWidgetItem(f"✓ {name}")
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self._module_panel.addItem(item)
 
     def set_status(self, message: str) -> None:
         self._status_bar.showMessage(message)

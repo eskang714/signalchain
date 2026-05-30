@@ -37,12 +37,6 @@ CONTRACT CHOICES (flagged — builder must confirm or amend):
           used only in tests to inject status without a real module registry.
           If the builder exposes a different injection point, update tests D/E.
 """
-import pytest
-
-_xfail = pytest.mark.xfail(
-    reason="PedalboardViewModel not yet implemented — TDD red phase",
-    strict=True,
-)
 
 _EXPECTED_IDS = [
     "conv_history",
@@ -72,7 +66,6 @@ _CONV_HISTORY_CONTROLS = [("DEPTH", 10), ("WINDOW", 20), ("TOKENS", 4096)]
 
 class TestPedalboardViewModelStructure:
 
-    @_xfail
     def test_exposes_exactly_six_modules(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -82,7 +75,6 @@ class TestPedalboardViewModelStructure:
             f"got {len(vm.modules)}"
         )
 
-    @_xfail
     def test_all_expected_module_ids_present(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -93,7 +85,6 @@ class TestPedalboardViewModelStructure:
                 f"module_id '{expected}' must be present in PedalboardViewModel.modules"
             )
 
-    @_xfail
     def test_each_module_has_correct_title(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -105,7 +96,6 @@ class TestPedalboardViewModelStructure:
                 f"got '{by_id[module_id].title}'"
             )
 
-    @_xfail
     def test_each_module_has_three_controls(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -116,7 +106,6 @@ class TestPedalboardViewModelStructure:
                 f"(per mockup spec); got {len(module.controls)}"
             )
 
-    @_xfail
     def test_conv_history_control_labels_and_defaults(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -139,7 +128,6 @@ class TestPedalboardViewModelStructure:
 
 class TestPedalboardToggle:
 
-    @_xfail
     def test_modules_start_enabled_by_default(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -149,7 +137,6 @@ class TestPedalboardToggle:
                 f"module '{module.module_id}' must start enabled by default"
             )
 
-    @_xfail
     def test_toggle_module_flips_enabled_state(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -172,7 +159,6 @@ class TestPedalboardToggle:
 
 class TestPedalboardSignals:
 
-    @_xfail
     def test_toggle_emits_module_state_changed(self, qtbot):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -201,7 +187,6 @@ class TestPedalboardSignals:
 
 class TestPedalboardLed:
 
-    @_xfail
     def test_led_on_when_module_is_functional(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
@@ -212,7 +197,6 @@ class TestPedalboardLed:
             "led_on must be True when the module is functional"
         )
 
-    @_xfail
     def test_led_off_when_module_is_not_functional(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 

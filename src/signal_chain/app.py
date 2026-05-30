@@ -159,11 +159,6 @@ class Application:
         self._main_window.settings_requested.connect(self._on_settings_requested)
         self._main_window.conversation_view.export_requested.connect(self._on_export_requested)
 
-        # Module panel
-        self._main_window.set_modules(
-            ["Conversation History", "Connected Accounts", "Markdown Output"]
-        )
-
         # Provider/model dropdowns (skip in override/test mode)
         if not self._provider_override:
             self._populate_provider_dropdowns(active_name, model_id)
