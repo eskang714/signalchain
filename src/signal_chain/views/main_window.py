@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QMainWindow, QSplitter, QStatusBar, QWidget
+from PyQt6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QMainWindow, QSplitter, QStatusBar, QVBoxLayout, QWidget
 
 from signal_chain.views.conversation_list_view import ConversationListView
 from signal_chain.views.conversation_view import ConversationView
+from signal_chain.views.pedalboard_view import Pedalboard
+from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
 
 class MainWindow(QMainWindow):
@@ -54,7 +56,20 @@ class MainWindow(QMainWindow):
         splitter.setSizes([260, 660, 280])
         splitter.setStretchFactor(1, 1)
 
-        self.setCentralWidget(splitter)
+        self._pedalboard_vm = PedalboardViewModel()
+        self.pedalboard = Pedalboard(self._pedalboard_vm.modules)
+        self._pedalboard_vm.module_state_changed.connect(
+            lambda _mid, _enabled: self.pedalboard.refresh_all()
+        )
+
+        central = QWidget()
+        vbox = QVBoxLayout()
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(0)
+        vbox.addWidget(splitter, stretch=1)
+        vbox.addWidget(self.pedalboard, stretch=0)
+        central.setLayout(vbox)
+        self.setCentralWidget(central)
 
         self._status_bar = QStatusBar()
         self.setStatusBar(self._status_bar)
