@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt, QLineF, QPointF, QRectF, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import QHBoxLayout, QSizePolicy, QWidget
 
-from signal_chain.viewmodels.pedalboard import PedalModule, PedalboardViewModel
+from signal_chain.viewmodels.pedalboard import LedStatus, PedalModule, PedalboardViewModel
 
 # Per-module color palette: (body_hex, plate_hex, accent_hex)
 _COLORS: dict[str, tuple[str, str, str]] = {
@@ -25,8 +25,11 @@ _FULL_NAMES: dict[str, str] = {
     "clock":        "Clock",
 }
 
-_LED_ON_COLOR = QColor(0, 200, 80)
-_LED_OFF_COLOR = QColor(40, 40, 40)
+_LED_COLORS: dict[LedStatus, QColor] = {
+    LedStatus.NO_CONNECTION: QColor(40, 40, 40),    # gray  — no API connection
+    LedStatus.CONNECTED_OFF: QColor(200, 40, 40),   # red   — connected, footswitch off
+    LedStatus.CONNECTED_ON:  QColor(0, 200, 80),    # green — connected, footswitch on
+}
 
 
 def _ctrl_range(ctrl: dict) -> tuple[float, float]:
@@ -213,7 +216,7 @@ class PedalWidget(QWidget):
         led_r = 0.45 * u
         led_cx = cx + led_r
         led_cy = cy + u
-        p.setBrush(_LED_ON_COLOR if self._module.led_on else _LED_OFF_COLOR)
+        p.setBrush(_LED_COLORS[self._module.led_status])
         p.setPen(Qt.PenStyle.NoPen)
         p.drawEllipse(QRectF(led_cx - led_r, led_cy - led_r, 2 * led_r, 2 * led_r))
 

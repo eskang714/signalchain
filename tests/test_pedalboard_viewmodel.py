@@ -128,28 +128,32 @@ class TestPedalboardViewModelStructure:
 
 class TestPedalboardToggle:
 
-    def test_modules_start_enabled_by_default(self):
+    def test_modules_start_disabled_by_default(self):
+        """Modules start with footswitch OFF (enabled=False) so LED renders red
+        (connected+off) until the user explicitly enables the module."""
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
         for module in vm.modules:
-            assert module.enabled is True, (
-                f"module '{module.module_id}' must start enabled by default"
+            assert module.enabled is False, (
+                f"module '{module.module_id}' must start disabled by default "
+                "(connected+off → red LED until user toggles ON)"
             )
 
     def test_toggle_module_flips_enabled_state(self):
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
+        # Module starts disabled (False); first toggle enables it.
         vm.toggle_module("conv_history")
         by_id = {m.module_id: m for m in vm.modules}
-        assert by_id["conv_history"].enabled is False, (
-            "toggle_module must disable an enabled module"
+        assert by_id["conv_history"].enabled is True, (
+            "toggle_module must enable a disabled module"
         )
 
         vm.toggle_module("conv_history")
-        assert by_id["conv_history"].enabled is True, (
-            "a second toggle_module must re-enable the module"
+        assert by_id["conv_history"].enabled is False, (
+            "a second toggle_module must disable the module again"
         )
 
 
@@ -176,34 +180,64 @@ class TestPedalboardSignals:
         assert emitted[0][0] == "web_access", (
             "module_state_changed must carry the module_id as the first argument"
         )
-        assert emitted[0][1] is False, (
-            "module_state_changed must carry the new enabled state as the second argument"
+        assert emitted[0][1] is True, (
+            "module_state_changed must carry the new enabled state (True after first toggle)"
         )
 
 
 # ---------------------------------------------------------------------------
-# D & E. LED derives from `functional`, not from `enabled`
+# D–F. LED uses 3-state LedStatus, not a boolean.
+#
+# Bug reproduced: the old model had led_on = functional (boolean), and
+# functional defaulted to True, so every pedal rendered constant green.
+# The fix replaces functional with a (connected, enabled) pair that drives
+# a LedStatus enum: NO_CONNECTION (gray), CONNECTED_OFF (red), CONNECTED_ON
+# (green).
 # ---------------------------------------------------------------------------
 
 class TestPedalboardLed:
 
-    def test_led_on_when_module_is_functional(self):
-        from signal_chain.viewmodels.pedalboard import PedalboardViewModel
+    def test_led_gray_when_not_connected(self):
+        """No API connection → gray regardless of footswitch state."""
+        from signal_chain.viewmodels.pedalboard import LedStatus, PedalboardViewModel
 
         vm = PedalboardViewModel()
-        vm.set_module_functional("conv_history", True)
+        vm.set_module_connected("conv_history", False)
         by_id = {m.module_id: m for m in vm.modules}
-        assert by_id["conv_history"].led_on is True, (
-            "led_on must be True when the module is functional"
+        assert by_id["conv_history"].led_status is LedStatus.NO_CONNECTION, (
+            "led_status must be NO_CONNECTION when the module has no API connection"
         )
 
-    def test_led_off_when_module_is_not_functional(self):
-        from signal_chain.viewmodels.pedalboard import PedalboardViewModel
+    def test_led_red_when_connected_and_disabled(self):
+        """Connected + footswitch OFF → red (connected_off)."""
+        from signal_chain.viewmodels.pedalboard import LedStatus, PedalboardViewModel
 
         vm = PedalboardViewModel()
-        vm.set_module_functional("conv_history", False)
+        # connected=True is already set by the fake source; enabled starts False.
         by_id = {m.module_id: m for m in vm.modules}
-        assert by_id["conv_history"].led_on is False, (
-            "led_on must be False when the module is not functional, "
-            "even if the module is enabled"
+        assert by_id["conv_history"].led_status is LedStatus.CONNECTED_OFF, (
+            "led_status must be CONNECTED_OFF when connected and not enabled"
+        )
+
+    def test_led_green_when_connected_and_enabled(self):
+        """Connected + footswitch ON → green (connected_on)."""
+        from signal_chain.viewmodels.pedalboard import LedStatus, PedalboardViewModel
+
+        vm = PedalboardViewModel()
+        vm.toggle_module("conv_history")   # False → True
+        by_id = {m.module_id: m for m in vm.modules}
+        assert by_id["conv_history"].led_status is LedStatus.CONNECTED_ON, (
+            "led_status must be CONNECTED_ON when connected and enabled"
+        )
+
+    def test_led_gray_overrides_enabled_when_no_connection(self):
+        """Gray wins even if footswitch is ON — connection is the precondition."""
+        from signal_chain.viewmodels.pedalboard import LedStatus, PedalboardViewModel
+
+        vm = PedalboardViewModel()
+        vm.toggle_module("conv_history")           # enable it
+        vm.set_module_connected("conv_history", False)  # lose connection
+        by_id = {m.module_id: m for m in vm.modules}
+        assert by_id["conv_history"].led_status is LedStatus.NO_CONNECTION, (
+            "led_status must be NO_CONNECTION regardless of enabled when not connected"
         )
