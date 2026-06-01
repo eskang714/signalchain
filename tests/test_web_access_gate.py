@@ -4,8 +4,8 @@ Tests for the network gateway scope-authorization contract — ticket #98.
 Supersedes the boolean-gate contract from ticket #97.
 
 TARGET (not yet built):
-  signal_chain.modules.web_access.NetworkGateway
-  signal_chain.modules.web_access.NetworkBlockedError
+  signal_chain.modules.network_gateway.NetworkGateway
+  signal_chain.modules.network_gateway.NetworkBlockedError
 
 CONTRACT (source of truth for this file):
   - DEFAULT-DENY: any scope not explicitly granted raises NetworkBlockedError.
@@ -38,11 +38,6 @@ CONTRACT CHOICES (flagged — builder must confirm or amend):
 """
 import pytest
 
-_xfail = pytest.mark.xfail(
-    reason="NetworkGateway scope contract not yet implemented — TDD red phase",
-    strict=True,
-)
-
 
 # ---------------------------------------------------------------------------
 # A. Default-deny policy and built-in scopes
@@ -50,10 +45,9 @@ _xfail = pytest.mark.xfail(
 
 class TestScopeAuthorization:
 
-    @_xfail
     def test_unknown_scope_is_denied_by_default(self):
         """An unrecognised scope string must be denied (default-deny policy)."""
-        from signal_chain.modules.web_access import NetworkBlockedError, NetworkGateway
+        from signal_chain.modules.network_gateway import NetworkBlockedError, NetworkGateway
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
@@ -62,10 +56,9 @@ class TestScopeAuthorization:
         with pytest.raises(NetworkBlockedError):
             gateway.authorize("unknown:scope")
 
-    @_xfail
     def test_net_provider_scope_is_always_granted(self):
         """net:provider must be granted regardless of module state (providers reachable out of the box)."""
-        from signal_chain.modules.web_access import NetworkGateway
+        from signal_chain.modules.network_gateway import NetworkGateway
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
@@ -73,10 +66,9 @@ class TestScopeAuthorization:
 
         gateway.authorize("net:provider")  # must not raise
 
-    @_xfail
     def test_net_provider_granted_even_when_web_access_is_off(self):
         """net:provider is independent of the web_access toggle."""
-        from signal_chain.modules.web_access import NetworkGateway
+        from signal_chain.modules.network_gateway import NetworkGateway
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
@@ -92,10 +84,9 @@ class TestScopeAuthorization:
 
 class TestWebFetchScope:
 
-    @_xfail
     def test_web_fetch_denied_when_web_access_module_is_off(self):
         """web:fetch is denied while the Web Access pedal is disabled."""
-        from signal_chain.modules.web_access import NetworkBlockedError, NetworkGateway
+        from signal_chain.modules.network_gateway import NetworkBlockedError, NetworkGateway
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
@@ -105,10 +96,9 @@ class TestWebFetchScope:
         with pytest.raises(NetworkBlockedError):
             gateway.authorize("web:fetch")
 
-    @_xfail
     def test_web_fetch_granted_when_web_access_module_is_on(self):
         """web:fetch is granted while the Web Access pedal is enabled."""
-        from signal_chain.modules.web_access import NetworkGateway
+        from signal_chain.modules.network_gateway import NetworkGateway
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
@@ -117,10 +107,9 @@ class TestWebFetchScope:
 
         gateway.authorize("web:fetch")  # must not raise
 
-    @_xfail
     def test_web_fetch_reflects_live_toggle_on_same_gateway_instance(self):
         """Toggling web_access after gateway construction flips web:fetch authorization immediately."""
-        from signal_chain.modules.web_access import NetworkBlockedError, NetworkGateway
+        from signal_chain.modules.network_gateway import NetworkBlockedError, NetworkGateway
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
