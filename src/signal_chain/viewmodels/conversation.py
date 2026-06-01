@@ -30,11 +30,13 @@ class _GenerationThread(QThread):
         provider: BaseProvider,
         messages: list[Message],
         config: GenerationConfig,
+        gateway: object | None = None,
     ) -> None:
         super().__init__()
         self._provider = provider
         self._messages = messages
         self._config = config
+        self._gateway = gateway
         self._cancelled = False
 
     def cancel(self) -> None:
@@ -42,6 +44,8 @@ class _GenerationThread(QThread):
 
     def run(self) -> None:
         try:
+            if self._gateway is not None:
+                self._gateway.authorize("net:provider")  # type: ignore[union-attr]
             for tok in self._provider.generate_stream(self._messages, self._config):
                 if self._cancelled:
                     break
@@ -68,9 +72,10 @@ class ConversationViewModel(BaseViewModel):
     # and an OS-level abort (SIGABRT).
     _live_threads: ClassVar[set[_GenerationThread]] = set()
 
-    def __init__(self, provider: BaseProvider) -> None:
+    def __init__(self, provider: BaseProvider, gateway: object | None = None) -> None:
         super().__init__()
         self._provider = provider
+        self._gateway = gateway
         self.is_generating: bool = False
         self.response_text: str = ""
         self.error_state: str = ""
@@ -126,7 +131,7 @@ class ConversationViewModel(BaseViewModel):
         self.is_generating = True
         self.generation_started.emit()
 
-        thread = _GenerationThread(self._provider, messages, config)
+        thread = _GenerationThread(self._provider, messages, config, gateway=self._gateway)
         ConversationViewModel._live_threads.add(thread)
 
         thread.token.connect(self._on_token)

@@ -36,14 +36,7 @@ XFAIL TRIGGER: ConversationViewModel(provider=..., gateway=...) raises
   The import of NetworkBlockedError (which lives in an unbuilt module)
   provides a second, independent xfail trigger for the denied-path tests.
 """
-import pytest
-
 from signal_chain.providers.base import BaseProvider, GenerationConfig, Message
-
-_xfail = pytest.mark.xfail(
-    reason="gateway wiring not yet implemented — TDD red phase",
-    strict=True,
-)
 
 
 class _FakeProvider(BaseProvider):
@@ -94,7 +87,6 @@ class _DenyGateway:
 
 class TestGatewayWiringNormalPath:
 
-    @_xfail
     def test_authorize_called_with_net_provider_before_generate_stream(self, qtbot):
         """gateway.authorize('net:provider') must precede generate_stream()."""
         from signal_chain.viewmodels.conversation import ConversationViewModel
@@ -117,7 +109,6 @@ class TestGatewayWiringNormalPath:
             "generate_stream must run when the gateway permits"
         )
 
-    @_xfail
     def test_tokens_stream_normally_when_gateway_permits(self, qtbot):
         """With a permitting gateway, token_received fires for each token."""
         from signal_chain.viewmodels.conversation import ConversationViewModel
@@ -143,7 +134,6 @@ class TestGatewayWiringNormalPath:
 
 class TestGatewayWiringBlockedPath:
 
-    @_xfail
     def test_generate_stream_not_called_when_gateway_blocks(self, qtbot):
         """generate_stream must not be invoked when NetworkBlockedError is raised."""
         from signal_chain.modules.network_gateway import NetworkBlockedError  # noqa: F401
@@ -161,7 +151,6 @@ class TestGatewayWiringBlockedPath:
             "NetworkBlockedError — the call must be aborted before reaching the provider"
         )
 
-    @_xfail
     def test_generation_error_emitted_when_gateway_blocks(self, qtbot):
         """generation_error must fire (not crash) when NetworkBlockedError is raised."""
         from signal_chain.modules.network_gateway import NetworkBlockedError  # noqa: F401

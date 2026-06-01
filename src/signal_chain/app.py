@@ -10,6 +10,7 @@ from signal_chain.models.config import AppConfig
 from signal_chain.models.conversation import Conversation, ConversationLoader
 from signal_chain.models.settings import SettingsManager
 from signal_chain.modules.pedal_markdownOutput import pedal_markdownOutput
+from signal_chain.modules.network_gateway import NetworkGateway
 from signal_chain.providers.claude import ClaudeProvider
 from signal_chain.providers.gemini_provider import GeminiProvider
 from signal_chain.providers.groq_provider import GroqProvider
@@ -118,16 +119,18 @@ class Application:
             )
             provider = OllamaProvider(base_url=settings.get_ollama_url())
 
-        # ViewModel
-        self._vm = ConversationViewModel(provider=provider)  # type: ignore[arg-type]
+        # Main window — created before VM so its pedalboard_vm can seed the gateway
+        self._main_window = MainWindow()
+
+        # ViewModel — gateway reads live pedalboard state at authorize() time
+        gateway = NetworkGateway(self._main_window._pedalboard_vm)
+        self._vm = ConversationViewModel(provider=provider, gateway=gateway)  # type: ignore[arg-type]
         active_name = next(
             (n for n, _, p in self._available_providers if p is provider), "ollama"
         )
         self._conversation = Conversation.create(provider=active_name, model_id=model_id)
         self._vm.set_conversation(self._conversation)
 
-        # Main window
-        self._main_window = MainWindow()
         self._main_window.conversation_view.set_viewmodel(self._vm)
 
         # Status bar wiring
