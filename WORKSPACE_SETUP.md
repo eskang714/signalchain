@@ -1,5 +1,5 @@
 # Workspace Setup Guide
-## Signal Chain
+## signal-chain
 
 ---
 
@@ -147,7 +147,7 @@ signalchain/
 │   ├── models/                # Data layer
 │   ├── viewmodels/            # Business logic + signals
 │   ├── views/                 # PyQt6 UI only
-│   ├── providers/             # Claude API, Ollama, GGUF
+│   ├── providers/             # Claude, Ollama, OpenRouter, Groq, Gemini
 │   ├── modules/               # Plugin system
 │   └── utils/                 # Shared helpers
 ├── tests/                     # All test files

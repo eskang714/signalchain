@@ -1,8 +1,11 @@
-# Signal Chain
+# signal-chain
 
 A desktop application for having personal, private conversations with AI.
 Supports local models on your own hardware and cloud services like Claude.
 Your data stays on your device.
+
+Capabilities work like a guitar pedalboard: a modular harness of "pedals" you
+patch into your signal chain and switch on or off as a conversation needs them.
 
 ![Tests](https://github.com/eskang714/signalchain/actions/workflows/ci.yml/badge.svg)
 
@@ -18,11 +21,28 @@ Your data stays on your device.
 
 ## What It Does
 
-- Chat with Claude API, Ollama models, and local GGUF models from one application
+- Chat with cloud providers (Claude, OpenRouter, Groq, Gemini) and local models via Ollama, all from one application
 - Run multiple conversations simultaneously, each with a different model
 - Keep all conversation history on your own device
-- Extend functionality through a module system (file access, web search, memory)
+- Shape each conversation with a modular pedalboard of capability pedals (see below)
 - Control exactly how much CPU, GPU, and RAM each model uses
+
+---
+
+## The Pedalboard
+
+The pedalboard is signal-chain's modular harness: each capability is a
+self-contained **pedal** you switch on or off, the way a guitarist arranges
+effects in a signal chain. Patch in only what a conversation needs.
+
+- **Conversation History** — controls how much earlier context is fed back to the model (depth, window, token budget)
+- **Markdown Output** — renders the model's replies as formatted markdown
+- **Connected Accounts** — manages your provider accounts: what's connected, what's valid, and which models each offers
+- **Web Access** — lets a model reach the web for fetches and lookups *(in development)*
+- **File Access** — lets a model read files from your machine *(in development)*
+- **Clock** — gives the model awareness of the current date and time *(in development)*
+
+Each pedal is global — it applies across every conversation — and toggles independently.
 
 ---
 
@@ -52,10 +72,10 @@ If you want to understand design decisions:
 
 Version 1.0 - In development.
 
-Planned V1 features:
-- Claude API, Ollama, and local GGUF model support
+V1 features:
+- Claude, Ollama, OpenRouter, Groq, and Gemini provider support (local models via Ollama)
 - Multi-conversation threading
-- Module system (conversation history, file system, markdown output, web access)
+- Modular pedalboard of capability pedals
 - Resource management with hardware compatibility checking
 - Local data storage with no required cloud sync
 

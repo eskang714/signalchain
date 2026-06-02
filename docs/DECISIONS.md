@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-Decision log for Signal Chain project architecture and significant technical choices.
+Decision log for signal-chain project architecture and significant technical choices.
 
 ---
 

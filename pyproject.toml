@@ -1,7 +1,7 @@
 [project]
 name = "signal-chain"
 version = "0.1.0"
-description = "Desktop LLM chat application supporting Claude API, Ollama, and local GGUF models"
+description = "Desktop LLM chat application for cloud providers (Claude, OpenRouter, Groq, Gemini) and local models via Ollama"
 readme = "README.md"
 authors = [
     { name = "eskang714", email = "eskang7@icloud.com" }
