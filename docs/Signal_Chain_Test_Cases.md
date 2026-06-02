@@ -1,4 +1,4 @@
-# Signal Chain - Acceptance Test Cases
+# signal-chain - Acceptance Test Cases
 **Version:** 1.1  
 **Format:** Given / When / Then  
 **Purpose:** Code is not accepted unless these pass.
