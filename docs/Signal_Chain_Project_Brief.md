@@ -1,4 +1,4 @@
-# Signal Chain - Project Brief
+# signal-chain - Project Brief
 **Version:** 1.0 Planning Complete  
 **Status:** Ready for DRAFT/Implementation  
 **Purpose:** Transfer document for Claude Code / Claude Cowork
