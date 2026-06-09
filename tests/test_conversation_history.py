@@ -60,9 +60,9 @@ class TestConversationHistoryModule:
 
     def test_add_message_then_get_history_round_trip(self):
         """Single add_message followed by get_history returns that message."""
-        from signal_chain.modules.conversation_history import ConversationHistoryModule
+        from signal_chain.modules.pedal_conversationHistory import pedal_conversationHistory
 
-        module = ConversationHistoryModule()
+        module = pedal_conversationHistory()
         module.initialize()
         module.execute("add_message", {"role": "user", "content": "hello"})
         result = module.execute("get_history", {})
@@ -81,9 +81,9 @@ class TestConversationHistoryModule:
 
     def test_history_is_stateful_across_multiple_add_calls(self):
         """Three add_message calls → get_history returns all three in insertion order."""
-        from signal_chain.modules.conversation_history import ConversationHistoryModule
+        from signal_chain.modules.pedal_conversationHistory import pedal_conversationHistory
 
-        module = ConversationHistoryModule()
+        module = pedal_conversationHistory()
         module.initialize()
         module.execute("add_message", {"role": "user",      "content": "first"})
         module.execute("add_message", {"role": "assistant", "content": "second"})
@@ -105,9 +105,9 @@ class TestConversationHistoryModule:
 
     def test_clear_history_empties_history_and_returns_cleared_true(self):
         """clear_history resets the store; subsequent get_history returns []."""
-        from signal_chain.modules.conversation_history import ConversationHistoryModule
+        from signal_chain.modules.pedal_conversationHistory import pedal_conversationHistory
 
-        module = ConversationHistoryModule()
+        module = pedal_conversationHistory()
         module.initialize()
         module.execute("add_message", {"role": "user", "content": "before clear"})
 
@@ -127,7 +127,7 @@ class TestConversationHistoryModule:
 
     def test_global_module_cannot_be_disabled_via_registry(self, tmp_path):
         """registry.disable('conversation_history') is a no-op; module stays enabled."""
-        from signal_chain.modules.conversation_history import ConversationHistoryModule  # noqa: F401
+        from signal_chain.modules.pedal_conversationHistory import pedal_conversationHistory  # noqa: F401
 
         import signal_chain.modules as _mods_pkg
         from signal_chain.modules.registry import ModuleRegistry
@@ -160,9 +160,9 @@ class TestConversationHistoryModule:
 
     def test_execute_accepts_caller_module_without_error(self):
         """Global modules accept calls from any caller_module without isolation errors."""
-        from signal_chain.modules.conversation_history import ConversationHistoryModule
+        from signal_chain.modules.pedal_conversationHistory import pedal_conversationHistory
 
-        module = ConversationHistoryModule()
+        module = pedal_conversationHistory()
         module.initialize()
         module.execute("add_message", {"role": "user", "content": "msg"})
         result = module.execute("get_history", {}, caller_module="markdown_output")

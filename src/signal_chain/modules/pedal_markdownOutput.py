@@ -12,7 +12,7 @@ class FunctionSchema:
     description: str = ""
 
 
-class MarkdownOutputModule(BaseModule):
+class pedal_markdownOutput(BaseModule):
     """Always-on global module — writes markdown files verbatim to output_dir."""
 
     def __init__(self, output_dir: Path) -> None:

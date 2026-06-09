@@ -11,7 +11,7 @@ class FunctionSchema:
     description: str = ""
 
 
-class ConversationHistoryModule(BaseModule):
+class pedal_conversationHistory(BaseModule):
     """Always-on global module — in-memory conversation history store."""
 
     def initialize(self) -> None:

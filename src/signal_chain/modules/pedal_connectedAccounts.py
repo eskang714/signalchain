@@ -22,7 +22,7 @@ class FunctionSchema:
     description: str = ""
 
 
-class ConnectedAccountsModule(BaseModule):
+class pedal_connectedAccounts(BaseModule):
     """Always-on global module — manages OAuth tokens and API keys via keyring.
 
     Auth passthrough only: retrieves and stores credentials, never calls external APIs.

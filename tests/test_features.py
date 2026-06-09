@@ -65,12 +65,12 @@ class TestTC40FileOutputViaMarkdownModule:
     """markdown_output writes files to output_dir and returns the path in its result."""
 
     def test_markdown_module_writes_file_to_output_dir(self, tmp_path):
-        from signal_chain.modules.markdown_output import MarkdownOutputModule
+        from signal_chain.modules.pedal_markdownOutput import pedal_markdownOutput
 
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        module = MarkdownOutputModule(output_dir=output_dir)
+        module = pedal_markdownOutput(output_dir=output_dir)
         module.initialize()
         module.execute("write_file", {
             "filename": "report.md",
@@ -82,12 +82,12 @@ class TestTC40FileOutputViaMarkdownModule:
         )
 
     def test_markdown_module_result_contains_file_path(self, tmp_path):
-        from signal_chain.modules.markdown_output import MarkdownOutputModule
+        from signal_chain.modules.pedal_markdownOutput import pedal_markdownOutput
 
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        module = MarkdownOutputModule(output_dir=output_dir)
+        module = pedal_markdownOutput(output_dir=output_dir)
         module.initialize()
         result = module.execute("write_file", {
             "filename": "notes.md",
@@ -101,13 +101,13 @@ class TestTC40FileOutputViaMarkdownModule:
         assert result["file_path"], "file_path must be a non-empty string"
 
     def test_markdown_module_created_file_has_correct_content(self, tmp_path):
-        from signal_chain.modules.markdown_output import MarkdownOutputModule
+        from signal_chain.modules.pedal_markdownOutput import pedal_markdownOutput
 
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
         content = "# Generated Report\n\n## Summary\n\nAI-generated content here."
-        module = MarkdownOutputModule(output_dir=output_dir)
+        module = pedal_markdownOutput(output_dir=output_dir)
         module.initialize()
         module.execute("write_file", {"filename": "report.md", "content": content})
 
