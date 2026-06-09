@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 from signal_chain.models.config import AppConfig
 from signal_chain.models.conversation import Conversation, ConversationLoader
 from signal_chain.models.settings import SettingsManager
-from signal_chain.modules.markdown_output import MarkdownOutputModule
+from signal_chain.modules.pedal_markdownOutput import pedal_markdownOutput
 from signal_chain.providers.claude import ClaudeProvider
 from signal_chain.providers.gemini_provider import GeminiProvider
 from signal_chain.providers.groq_provider import GroqProvider
@@ -268,7 +268,7 @@ class Application:
         if not content:
             return
         config = AppConfig.from_yaml(_CONFIG_PATH)
-        module = MarkdownOutputModule(output_dir=config.output_dir)
+        module = pedal_markdownOutput(output_dir=config.output_dir)
         module.initialize()
         result = module.execute(
             "write_file",

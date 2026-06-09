@@ -212,9 +212,9 @@ class TestTC37ConnectedAccountsScopeEnforcement:
     """connected_accounts provides tokens only — it never calls external APIs itself."""
 
     def test_get_token_returns_token_for_connected_service(self):
-        from signal_chain.modules.connected_accounts import ConnectedAccountsModule
+        from signal_chain.modules.pedal_connectedAccounts import pedal_connectedAccounts
 
-        module = ConnectedAccountsModule()
+        module = pedal_connectedAccounts()
         module.initialize()
         result = module.execute("get_token", {"service": "google"})
 
@@ -224,7 +224,7 @@ class TestTC37ConnectedAccountsScopeEnforcement:
 
     def test_connected_accounts_makes_no_external_network_calls(self, monkeypatch):
         """connected_accounts is a pure passthrough — no outbound HTTP during get_token."""
-        from signal_chain.modules.connected_accounts import ConnectedAccountsModule
+        from signal_chain.modules.pedal_connectedAccounts import pedal_connectedAccounts
 
         network_calls: list[str] = []
 
@@ -234,7 +234,7 @@ class TestTC37ConnectedAccountsScopeEnforcement:
 
         monkeypatch.setattr("urllib.request.urlopen", intercept)
 
-        module = ConnectedAccountsModule()
+        module = pedal_connectedAccounts()
         module.initialize()
         module.execute("get_token", {"service": "google"})
 
@@ -245,9 +245,9 @@ class TestTC37ConnectedAccountsScopeEnforcement:
 
     def test_get_token_result_contains_credential_not_api_data(self):
         """The returned dict contains credential fields only, not API response payloads."""
-        from signal_chain.modules.connected_accounts import ConnectedAccountsModule
+        from signal_chain.modules.pedal_connectedAccounts import pedal_connectedAccounts
 
-        module = ConnectedAccountsModule()
+        module = pedal_connectedAccounts()
         module.initialize()
         result = module.execute("get_token", {"service": "google"})
 
@@ -261,9 +261,9 @@ class TestTC37ConnectedAccountsScopeEnforcement:
 
     def test_connected_accounts_has_no_data_processing_functions(self):
         """connected_accounts exposes only auth functions, not data-fetching calls."""
-        from signal_chain.modules.connected_accounts import ConnectedAccountsModule
+        from signal_chain.modules.pedal_connectedAccounts import pedal_connectedAccounts
 
-        module = ConnectedAccountsModule()
+        module = pedal_connectedAccounts()
         function_names = [f.name for f in module.get_functions()]
 
         data_processing_keywords = ("fetch", "query", "send", "post", "get_data", "call")
