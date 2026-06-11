@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from signal_chain.models.context import ContextWindowManager
+from signal_chain.modules.network_gateway import _PermitGateway
 from signal_chain.providers.base import BaseProvider, GenerationConfig, Message
 from signal_chain.viewmodels.base import BaseViewModel
 
@@ -30,7 +31,7 @@ class _GenerationThread(QThread):
         provider: BaseProvider,
         messages: list[Message],
         config: GenerationConfig,
-        gateway: object | None = None,
+        gateway: _PermitGateway = _PermitGateway(),
     ) -> None:
         super().__init__()
         self._provider = provider
@@ -44,8 +45,7 @@ class _GenerationThread(QThread):
 
     def run(self) -> None:
         try:
-            if self._gateway is not None:
-                self._gateway.authorize("net:provider")  # type: ignore[union-attr]
+            self._gateway.authorize("net:provider")
             for tok in self._provider.generate_stream(self._messages, self._config):
                 if self._cancelled:
                     break
@@ -72,7 +72,7 @@ class ConversationViewModel(BaseViewModel):
     # and an OS-level abort (SIGABRT).
     _live_threads: ClassVar[set[_GenerationThread]] = set()
 
-    def __init__(self, provider: BaseProvider, gateway: object | None = None) -> None:
+    def __init__(self, provider: BaseProvider, gateway: _PermitGateway = _PermitGateway()) -> None:
         super().__init__()
         self._provider = provider
         self._gateway = gateway

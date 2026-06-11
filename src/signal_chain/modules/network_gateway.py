@@ -16,6 +16,21 @@ class NetworkBlockedError(Exception):
     """Raised by NetworkGateway.authorize() when a scope is not granted."""
 
 
+class _PermitGateway:
+    """Null Object gateway — always grants every scope.
+
+    Used as the default gateway when no authorization policy is needed,
+    eliminating null checks at every call site (ADR-008).  Records all
+    authorize() calls in self.calls so tests can verify call order.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def authorize(self, scope: str) -> None:
+        self.calls.append(scope)
+
+
 class NetworkGateway:
     """Scope-based authorization chokepoint for all outbound network access.
 

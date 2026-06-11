@@ -36,6 +36,7 @@ XFAIL TRIGGER: ConversationViewModel(provider=..., gateway=...) raises
   The import of NetworkBlockedError (which lives in an unbuilt module)
   provides a second, independent xfail trigger for the denied-path tests.
 """
+from signal_chain.modules.network_gateway import _PermitGateway
 from signal_chain.providers.base import BaseProvider, GenerationConfig, Message
 
 
@@ -60,16 +61,6 @@ class _FakeProvider(BaseProvider):
 
     def validate_config(self) -> bool:
         return True
-
-
-class _PermitGateway:
-    """Test stub: permits every scope; records calls in order."""
-
-    def __init__(self) -> None:
-        self.calls: list[str] = []
-
-    def authorize(self, scope: str) -> None:
-        self.calls.append(scope)
 
 
 class _DenyGateway:
