@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from signal_chain.models.context import ContextWindowManager
+from signal_chain.modules.network_gateway import _PermitGateway
 from signal_chain.providers.base import BaseProvider, GenerationConfig, Message
 from signal_chain.viewmodels.base import BaseViewModel
 
@@ -30,11 +31,13 @@ class _GenerationThread(QThread):
         provider: BaseProvider,
         messages: list[Message],
         config: GenerationConfig,
+        gateway: _PermitGateway = _PermitGateway(),
     ) -> None:
         super().__init__()
         self._provider = provider
         self._messages = messages
         self._config = config
+        self._gateway = gateway
         self._cancelled = False
 
     def cancel(self) -> None:
@@ -42,6 +45,7 @@ class _GenerationThread(QThread):
 
     def run(self) -> None:
         try:
+            self._gateway.authorize("net:provider")
             for tok in self._provider.generate_stream(self._messages, self._config):
                 if self._cancelled:
                     break
@@ -68,9 +72,10 @@ class ConversationViewModel(BaseViewModel):
     # and an OS-level abort (SIGABRT).
     _live_threads: ClassVar[set[_GenerationThread]] = set()
 
-    def __init__(self, provider: BaseProvider) -> None:
+    def __init__(self, provider: BaseProvider, gateway: _PermitGateway = _PermitGateway()) -> None:
         super().__init__()
         self._provider = provider
+        self._gateway = gateway
         self.is_generating: bool = False
         self.response_text: str = ""
         self.error_state: str = ""
@@ -126,7 +131,7 @@ class ConversationViewModel(BaseViewModel):
         self.is_generating = True
         self.generation_started.emit()
 
-        thread = _GenerationThread(self._provider, messages, config)
+        thread = _GenerationThread(self._provider, messages, config, gateway=self._gateway)
         ConversationViewModel._live_threads.add(thread)
 
         thread.token.connect(self._on_token)
