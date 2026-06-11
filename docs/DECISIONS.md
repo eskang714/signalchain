@@ -112,4 +112,22 @@ The lowercase, unpolished form is a deliberate branding choice: each module read
 - Applied by a separate `chore` ticket that performs the rename across the codebase.
 - Adjacent to the planned extraction of the provider-selector backend out of `app.py` (a distinct unit, not a pedal).
 
+---## Description
+Add ADR-008 to docs/DECISIONS.md documenting the network gateway gating policy. Resolves the three open forks that paused #106: `net:provider` always-granted policy, `gateway=_PermitGateway()` as the default (Null Object pattern), generation-path-only gating (probe path excluded), and `net:provider` scope granularity documented as a known limitation.
+
+## Acceptance Criteria
+- ADR-008 appended to docs/DECISIONS.md following the established format (Status, Date, Context, Decision, Consequences, Alternatives Considered, Related Decisions, trailing ---)
+- All four decisions documented: always-granted `net:provider`, `_PermitGateway()` default, generation-path-only gate, scope granularity as known limitation
+- Full suite green, ruff clean
+- Commit: `docs: add ADR-008 network gateway gating policy`
+
+## Notes
+- Source of truth: architecture review grounded in Saltzer & Schroeder (1975) complete mediation, Null Object pattern, OCP (SOLID)
+- Collapsed tick-tock — docs only, nothing to test. gverify just confirms suite stays green.
+- ADR content already drafted in adr-008.txt — apply with: `cat adr-008.txt >> docs/DECISIONS.md`
+- Unblocks #106 (Complete Mediation - Feat: wire generation path through network gate)
+
 ---
+
+Labels: documentation, priority:high
+Branch: docs/adr-008-gating-policy
