@@ -11,11 +11,8 @@ from signal_chain.models.conversation import Conversation, ConversationLoader
 from signal_chain.models.settings import SettingsManager
 from signal_chain.modules.pedal_markdownOutput import pedal_markdownOutput
 from signal_chain.modules.network_gateway import NetworkGateway
-from signal_chain.providers.claude import ClaudeProvider
-from signal_chain.providers.gemini_provider import GeminiProvider
-from signal_chain.providers.groq_provider import GroqProvider
+from signal_chain.provider_manager import ProviderManager
 from signal_chain.providers.ollama import OllamaProvider
-from signal_chain.providers.openrouter import OpenRouterProvider
 from signal_chain.viewmodels.conversation import ConversationViewModel
 from signal_chain.viewmodels.startup import StartupViewModel
 from signal_chain.views.main_window import MainWindow
@@ -36,9 +33,7 @@ class Application:
         self._conversation: Conversation | None = None
         self._conv_dir: Path | None = None
         self._settings: SettingsManager | None = None
-        # list of (name, display_name, provider_instance) for available providers
-        self._available_providers: list[tuple[str, str, object]] = []
-        self._active_provider_inst: object | None = None
+        self._pm: ProviderManager | None = None
 
     def run(self) -> int:
         self._startup_vm.wizard_required.connect(self._on_wizard_required)
@@ -96,7 +91,6 @@ class Application:
         # Provider and model setup
         if self._provider_override:
             provider = self._provider_override
-            self._active_provider_inst = provider
             model_id = ""
             try:
                 models = provider.list_models()  # type: ignore[union-attr]
@@ -105,10 +99,12 @@ class Application:
                     provider.load_model(model_id)  # type: ignore[union-attr]
             except Exception:
                 pass
+            active_name = "ollama"
         else:
-            self._available_providers = self._get_available_providers()
-            provider, model_id = self._select_initial_provider_and_model()
-            self._active_provider_inst = provider
+            self._pm = ProviderManager(settings)
+            self._pm.discover()
+            provider, model_id = self._pm.select_initial()
+            active_name = self._pm.active_name
 
         if provider is None:
             QMessageBox.warning(
@@ -125,9 +121,6 @@ class Application:
         # ViewModel — gateway reads live pedalboard state at authorize() time
         gateway = NetworkGateway(self._main_window._pedalboard_vm)
         self._vm = ConversationViewModel(provider=provider, gateway=gateway)  # type: ignore[arg-type]
-        active_name = next(
-            (n for n, _, p in self._available_providers if p is provider), "ollama"
-        )
         self._conversation = Conversation.create(provider=active_name, model_id=model_id)
         self._vm.set_conversation(self._conversation)
 
@@ -285,61 +278,16 @@ class Application:
     # Provider management
     # ------------------------------------------------------------------
 
-    def _get_available_providers(self) -> list[tuple[str, str, object]]:
-        """Return (name, display, instance) for each provider that validates."""
-        result: list[tuple[str, str, object]] = []
-        or_p = OpenRouterProvider()
-        if or_p.validate_config():
-            result.append(("openrouter", "OpenRouter", or_p))
-        claude_p = ClaudeProvider()
-        if claude_p.validate_config():
-            result.append(("claude", "Claude", claude_p))
-        groq_p = GroqProvider()
-        if groq_p.validate_config():
-            result.append(("groq", "Groq", groq_p))
-        gemini_p = GeminiProvider()
-        if gemini_p.validate_config():
-            result.append(("gemini", "Gemini", gemini_p))
-        url = self._settings.get_ollama_url() if self._settings else None
-        ollama_p = OllamaProvider(base_url=url)
-        if ollama_p.validate_config():
-            result.append(("ollama", "Ollama", ollama_p))
-        return result
-
-    def _select_initial_provider_and_model(self) -> tuple[object | None, str]:
-        """Pick provider and model based on saved preferences or first available."""
-        if not self._available_providers:
-            return None, ""
-        saved_name = self._settings.get_active_provider() if self._settings else ""
-        provider = next(
-            (p for n, _, p in self._available_providers if n == saved_name),
-            self._available_providers[0][2],
-        )
-        model_id = ""
-        try:
-            models = provider.list_models()  # type: ignore[union-attr]
-            if models:
-                saved_model = self._settings.get_active_model() if self._settings else ""
-                model_id = (
-                    saved_model
-                    if any(m.id == saved_model for m in models)
-                    else models[0].id
-                )
-                provider.load_model(model_id)  # type: ignore[union-attr]
-        except Exception:
-            pass
-        return provider, model_id
-
     def _populate_provider_dropdowns(self, active_name: str, active_model: str) -> None:
-        if self._main_window is None:
+        if self._main_window is None or self._pm is None:
             return
-        provider_items = [(n, d) for n, d, _ in self._available_providers]
+        provider_items = [(n, d) for n, d, _ in self._pm.available]
         self._main_window.set_providers(provider_items)
         if active_name:
             self._main_window.set_active_provider(active_name)
         model_items: list[tuple[str, str]] = []
         provider = next(
-            (p for n, _, p in self._available_providers if n == active_name), None
+            (p for n, _, p in self._pm.available if n == active_name), None
         )
         if provider is not None:
             try:
@@ -354,65 +302,27 @@ class Application:
             self._main_window.set_active_model(active_model)
 
     def _on_provider_changed(self, name: str) -> None:
-        provider = next(
-            (p for n, _, p in self._available_providers if n == name), None
-        )
-        if provider is None:
+        if self._pm is None:
             return
-        self._active_provider_inst = provider
-        model_id = ""
-        model_items: list[tuple[str, str]] = []
-        try:
-            models = provider.list_models()  # type: ignore[union-attr]
-            if models:
-                saved = self._settings.get_active_model() if self._settings else ""
-                model_id = (
-                    saved if any(m.id == saved for m in models) else models[0].id
-                )
-                provider.load_model(model_id)  # type: ignore[union-attr]
-                model_items = [(m.id, m.name) for m in models]
-        except Exception:
-            pass
+        model_id, model_items = self._pm.select_provider(name)
         if self._main_window is not None:
             self._main_window.set_models(model_items)
             if model_id:
                 self._main_window.set_active_model(model_id)
-        if self._vm is not None:
-            self._vm.set_provider(provider)
-        if self._settings is not None:
-            self._settings.set_active_provider(name)
-            self._settings.set_active_model(model_id)
-            try:
-                self._settings.save()
-            except Exception:
-                pass
+        if self._vm is not None and self._pm.active_provider is not None:
+            self._vm.set_provider(self._pm.active_provider)
 
     def _on_model_changed(self, model_id: str) -> None:
-        if self._active_provider_inst is not None and model_id:
-            try:
-                self._active_provider_inst.load_model(model_id)  # type: ignore[union-attr]
-            except Exception:
-                pass
-        if self._settings is not None:
-            self._settings.set_active_model(model_id)
-            try:
-                self._settings.save()
-            except Exception:
-                pass
+        if self._pm is not None:
+            self._pm.select_model(model_id)
 
     def _refresh_providers(self) -> None:
         """Re-check available providers and repopulate dropdowns (e.g. after settings save)."""
-        if self._main_window is None or self._settings is None:
+        if self._main_window is None or self._pm is None:
             return
-        self._available_providers = self._get_available_providers()
-        active_name = self._settings.get_active_provider()
-        if not any(n == active_name for n, _, _ in self._available_providers):
-            active_name = self._available_providers[0][0] if self._available_providers else ""
-        provider, model_id = self._select_initial_provider_and_model()
-        if provider is not None:
-            self._active_provider_inst = provider
-            if self._vm is not None:
-                self._vm.set_provider(provider)
+        active_name, model_id = self._pm.refresh()
+        if self._pm.active_provider is not None and self._vm is not None:
+            self._vm.set_provider(self._pm.active_provider)
         self._populate_provider_dropdowns(active_name, model_id)
 
     def _on_settings_requested(self) -> None:
