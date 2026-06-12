@@ -32,11 +32,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-_xfail = pytest.mark.xfail(
-    reason="pedal_webAccess not yet built — TDD red phase",
-    strict=True,
-)
-
 
 # ---------------------------------------------------------------------------
 # 1. Importability
@@ -44,7 +39,6 @@ _xfail = pytest.mark.xfail(
 
 class TestPedalWebAccessImportable:
 
-    @_xfail
     def test_pedal_webAccess_is_importable(self):
         """The module must be importable and the class instantiable."""
         from signal_chain.modules.pedal_webAccess import pedal_webAccess  # noqa: N813
@@ -59,7 +53,6 @@ class TestPedalWebAccessImportable:
 
 class TestPedalWebAccessInterface:
 
-    @_xfail
     def test_pedal_webAccess_follows_module_interface(self):
         """Must expose initialize() and execute() matching the BaseModule contract."""
         from signal_chain.modules.pedal_webAccess import pedal_webAccess  # noqa: N813
@@ -80,7 +73,6 @@ class TestPedalWebAccessInterface:
 
 class TestPedalWebAccessFetchEnabled:
 
-    @_xfail
     def test_fetch_returns_content_when_gate_enabled(self, monkeypatch):
         """execute('fetch') returns {'content': <non-empty str>} when web_access is ON."""
         from signal_chain.modules.network_gateway import NetworkGateway, _PermitGateway  # noqa: F401
@@ -117,7 +109,6 @@ class TestPedalWebAccessFetchEnabled:
 
 class TestPedalWebAccessFetchBlocked:
 
-    @_xfail
     def test_fetch_raises_network_blocked_error_when_gate_disabled(self):
         """execute('fetch') raises NetworkBlockedError when web_access is OFF."""
         from signal_chain.modules.network_gateway import NetworkBlockedError, NetworkGateway
@@ -134,7 +125,6 @@ class TestPedalWebAccessFetchBlocked:
         with pytest.raises(NetworkBlockedError):
             pedal.execute("fetch", {"url": "https://example.com"})
 
-    @_xfail
     def test_no_http_call_made_when_gate_disabled(self, monkeypatch):
         """No outbound HTTP request must be made when the gateway blocks the fetch."""
         from signal_chain.modules.network_gateway import NetworkBlockedError, NetworkGateway
