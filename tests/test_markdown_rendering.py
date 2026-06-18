@@ -1,48 +1,47 @@
 """
-Tests for pedal-driven markdown rendering — ticket #127.
+Tests for per-message (frozen-at-generation) markdown rendering — ticket #130.
 
-Supersedes tests/test_per_message_markdown.py (deleted).  The per-message
-approach was abandoned on feat/per-message-markdown and never merged.
-The markdown pedal is now the single source of truth: rendering is global,
-not per-message.
+Supersedes the global pedal-driven approach from #127. The per-message model:
+  - Each assistant message is stamped with the markdown pedal's is_enabled state
+    at the moment the generation completes.
+  - The stamp is immutable — toggling the pedal after generation never re-renders
+    existing messages.
+  - The pedal's only live effect is on the NEXT message generated.
 
-CONTRACT:
-  - ConversationView exposes a setter (set_markdown_enabled) that controls
-    whether assistant messages are rendered as Markdown or plain text.
-  - Calling set_markdown_enabled re-renders the currently loaded
-    _display_messages in the new mode WITHOUT requiring another
-    show_conversation() call.
-  - MainWindow wires _pedalboard_vm.module_state_changed to the view's setter
-    at construction time so that footswitch presses drive live re-rendering.
-  - Conversation JSON files containing a render_markdown key (written by the
-    abandoned per-message branch) load without error — the unknown key is
-    silently ignored.
+CONTRACT (all xfail until #129 builder tock lands):
+  - ConversationMessage gains a render_markdown: bool field.
+  - ConversationLoader saves and restores render_markdown; JSON without the field
+    loads cleanly, defaulting to markdown-on (Elk's decision, ticket #130).
+  - ConversationView renders each assistant message according to its own
+    render_markdown flag, not a single global mode.
+  - The generation pipeline stamps render_markdown = pedalboard.is_enabled("markdown")
+    at completion time.
 
 FLAGS (builder must confirm or amend):
 
-  FLAG-A  View↔pedal wiring.
-          Tests assume ConversationView.set_markdown_enabled(enabled: bool) —
-          a setter that re-renders _display_messages in the requested mode.
-          MainWindow must connect:
-            _pedalboard_vm.module_state_changed → λ mid, en:
-              conversation_view.set_markdown_enabled(en) if mid == "markdown"
-          Alternative: the view holds a PedalboardViewModel reference and
-          reads _by_id["markdown"].enabled directly in _render_all_messages.
-          xfail trigger: AttributeError today — set_markdown_enabled does not
-          exist on ConversationView.
+  FLAG-A  Stamp location.
+          Where is render_markdown set on the completed message?
+          Option 1 (VM): ConversationViewModel._on_complete() reads pedalboard state,
+            passes it to Conversation.add_message() — VM needs a pedalboard kwarg.
+          Option 2 (view): ConversationView._on_generation_complete() stamps the entry
+            it appends to _display_messages — view needs a pedalboard reference.
+          Option 3 (app): Application._on_generation_complete() passes the pedal state
+            to add_message() — already has self._main_window._pedalboard_vm.
+          Builder's call — do NOT decide here.
 
-  FLAG-B  _from_dict unknown-key tolerance.
-          Option 1 (preferred): strip unknown keys before ConversationMessage(**m)
-            known = {f.name for f in dataclasses.fields(ConversationMessage)}
-            messages = [ConversationMessage(**{k: v for k, v in m.items() if k in known})
-                        for m in data.get("messages", [])]
-          Option 2: explicit version migration in a conversion layer.
-          xfail trigger: TypeError today — ConversationMessage(**m) rejects
-          render_markdown as an unexpected kwarg.
+  FLAG-B  Per-message data shape in show_conversation / _display_messages.
+          Currently show_conversation takes list[tuple[str, str]].
+          Options:
+            (a) list[tuple[str, str, bool]] — 3-tuple; minimal change
+            (b) list[ConversationMessage] — pass model objects directly
+            (c) list[dict] — generic dict with role/content/render_markdown
+          View tests below pass ConversationMessage objects (option b).
+          If builder chooses a different shape, adjust view tests accordingly.
+          Builder's call — do NOT decide here.
 
 HTML assertions use asterisk presence/absence rather than tag names.
-Qt's toHtml() normalises <strong> to font-weight spans, but it never
-re-inserts the source asterisks — so "**bold**" absent ↔ markdown rendered.
+Qt's toHtml() normalises <strong> to font-weight spans but never
+re-inserts source asterisks — "**bold**" absent ↔ markdown rendered.
 """
 import json
 
@@ -50,159 +49,270 @@ import pytest
 
 _xfail = pytest.mark.xfail(
     strict=True,
-    reason="pedal-driven markdown rendering not yet implemented",
+    reason="per-message frozen markdown rendering not yet implemented",
 )
 
 
 # ---------------------------------------------------------------------------
-# View layer — set_markdown_enabled controls rendering direction
+# Model layer — ConversationMessage carries render_markdown
 # ---------------------------------------------------------------------------
 
-class TestViewMarkdownRendering:
+class TestConversationMessageModel:
 
     @_xfail
-    def test_markdown_enabled_renders_markdown(self, qtbot):
-        """set_markdown_enabled(True) must render assistant text as Markdown —
-        asterisks consumed, not shown literally in the HTML output."""
-        from signal_chain.views.conversation_view import ConversationView
+    def test_render_markdown_true_round_trips_through_json(self, tmp_path):
+        """render_markdown=True must survive a save/load cycle."""
+        from signal_chain.models.conversation import (
+            Conversation,
+            ConversationLoader,
+            ConversationMessage,
+        )
 
-        view = ConversationView()
-        qtbot.addWidget(view)
-        view.show_conversation([("assistant", "**bold**")])
+        # TypeError today: ConversationMessage has no render_markdown field → xfail
+        msg = ConversationMessage(
+            id="msg_0000",
+            role="assistant",
+            content="**bold**",
+            timestamp="2026-01-01T00:00:00+00:00",
+            render_markdown=True,
+        )
+        conv = Conversation.create(provider="test", model_id="test-model")
+        conv.messages.append(msg)
 
-        # AttributeError today — ConversationView has no set_markdown_enabled → xfail
-        view.set_markdown_enabled(True)
+        path = ConversationLoader.save(conv, tmp_path)
+        loaded = ConversationLoader.load(path)
 
-        html = view._display.toHtml()
-        assert "**bold**" not in html, (
-            "set_markdown_enabled(True): **bold** must be rendered as HTML bold; "
-            "literal asterisks must not appear in toHtml() output (FLAG-A)"
+        assert loaded.messages[0].render_markdown is True, (
+            "render_markdown=True must survive JSON serialisation and load"
         )
 
     @_xfail
-    def test_markdown_disabled_renders_plain(self, qtbot):
-        """set_markdown_enabled(False) must render assistant text as escaped plain
-        text — asterisks preserved (* is not HTML-special)."""
-        from signal_chain.views.conversation_view import ConversationView
+    def test_render_markdown_false_round_trips_through_json(self, tmp_path):
+        """render_markdown=False must survive a save/load cycle."""
+        from signal_chain.models.conversation import (
+            Conversation,
+            ConversationLoader,
+            ConversationMessage,
+        )
 
-        view = ConversationView()
-        qtbot.addWidget(view)
-        view.show_conversation([("assistant", "**bold**")])
+        # TypeError today → xfail
+        msg = ConversationMessage(
+            id="msg_0000",
+            role="assistant",
+            content="**bold**",
+            timestamp="2026-01-01T00:00:00+00:00",
+            render_markdown=False,
+        )
+        conv = Conversation.create(provider="test", model_id="test-model")
+        conv.messages.append(msg)
 
-        # AttributeError today → xfail
-        view.set_markdown_enabled(False)
+        path = ConversationLoader.save(conv, tmp_path)
+        loaded = ConversationLoader.load(path)
 
-        html = view._display.toHtml()
-        assert "**bold**" in html, (
-            "set_markdown_enabled(False): **bold** must appear as literal text; "
-            "* is not HTML-special and must survive setHtml/toHtml (FLAG-A)"
+        assert loaded.messages[0].render_markdown is False, (
+            "render_markdown=False must survive JSON serialisation and load"
         )
 
     @_xfail
-    def test_pedal_toggle_rerenders_without_second_show_conversation(self, qtbot):
-        """Calling set_markdown_enabled after show_conversation must re-render the
-        currently loaded messages WITHOUT a second show_conversation() call."""
-        from signal_chain.views.conversation_view import ConversationView
+    def test_missing_render_markdown_defaults_to_markdown_on(self, tmp_path):
+        """JSON without render_markdown must load with render_markdown=True (markdown-on default).
 
-        view = ConversationView()
-        qtbot.addWidget(view)
-        view.show_conversation([("assistant", "**bold**")])
-
-        # Establish a plain-text baseline.
-        # AttributeError today → xfail
-        view.set_markdown_enabled(False)
-        html_plain = view._display.toHtml()
-        assert "**bold**" in html_plain, "sanity: plain mode must preserve asterisks"
-
-        # Flip to markdown — must re-render the already-loaded conversation in place.
-        view.set_markdown_enabled(True)
-        html_markdown = view._display.toHtml()
-
-        assert "**bold**" not in html_markdown, (
-            "set_markdown_enabled(True) must re-render existing _display_messages; "
-            "asterisks must be consumed without a second show_conversation() call"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Integration — MainWindow pedalboard drives the conversation view
-# ---------------------------------------------------------------------------
-
-class TestMainWindowIntegration:
-
-    @_xfail
-    def test_mainwindow_pedalboard_toggle_rerenders_conversation_view(self, qtbot):
-        """Toggling the markdown pedal via the real MainWindow pedalboard must
-        change the rendered HTML — proves conversation_view is bound to the
-        shared _pedalboard_vm that the physical footswitch drives.
-
-        xfail today: no signal wiring exists between _pedalboard_vm and
-        conversation_view; toggling the module has no effect on the rendered HTML.
-        """
-        from signal_chain.views.main_window import MainWindow
-
-        window = MainWindow()
-        qtbot.addWidget(window)
-        window.conversation_view.show_conversation([("assistant", "**bold**")])
-
-        html_before = window.conversation_view._display.toHtml()
-
-        # Toggle the markdown pedal via the shared pedalboard VM.
-        window._pedalboard_vm.toggle_module("markdown")
-
-        html_after = window.conversation_view._display.toHtml()
-
-        # HTML must change — proves the view re-rendered in response to the toggle.
-        # Fails today because there is no wiring between _pedalboard_vm and the view.
-        assert html_before != html_after, (
-            "toggling _pedalboard_vm.toggle_module('markdown') must trigger a "
-            "live re-render of conversation_view — proves the view is bound to "
-            "the same pedalboard VM the footswitch drives (FLAG-A)"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Model layer — backward-compat with abandoned per-message JSON
-# ---------------------------------------------------------------------------
-
-class TestBackwardCompatibility:
-
-    @_xfail
-    def test_json_with_render_markdown_field_loads_without_error(self, tmp_path):
-        """A conversation JSON file containing render_markdown in a message must
-        load without raising TypeError — the unknown key must be silently ignored.
-
-        Context: the per-message branch wrote render_markdown into saved JSON.
-        That branch was abandoned, but users may have such files on disk.
-        FLAG-B: builder chooses between key-filtering and version migration.
+        Covers existing conversations and conversations saved by old code.
+        Default is markdown-on per Elk's decision in ticket #130.
         """
         from signal_chain.models.conversation import ConversationLoader
 
         data = {
             "version": "1.0",
             "schema": "conversation.v1",
-            "conversation_id": "conv_compat_127",
+            "conversation_id": "conv_compat_130",
             "created": "2026-01-01T00:00:00+00:00",
             "model": {"provider": "test", "model_id": "test"},
             "messages": [
                 {
                     "id": "msg_0000",
                     "role": "assistant",
-                    "content": "hello from the past",
+                    "content": "**bold**",
                     "timestamp": "2026-01-01T00:00:00+00:00",
-                    "render_markdown": True,  # unknown key — from abandoned branch
+                    # render_markdown intentionally absent
                 }
             ],
             "metadata": {"title": "", "tags": [], "module_usage": {}},
         }
-        path = tmp_path / "conv_compat_127.json"
+        path = tmp_path / "conv_no_rm.json"
         path.write_text(json.dumps(data))
 
-        # TypeError today: ConversationMessage(**m) rejects unknown kwarg → xfail
         conv = ConversationLoader.load(path)
 
-        assert len(conv.messages) == 1, "all messages must load, none dropped"
-        assert conv.messages[0].content == "hello from the past"
+        # AttributeError today: ConversationMessage has no render_markdown → xfail
+        assert conv.messages[0].render_markdown is True, (
+            "missing render_markdown must default to True (markdown-on) per Elk's decision"
+        )
+
+
+# ---------------------------------------------------------------------------
+# View layer — per-message render_markdown flag drives rendering
+# ---------------------------------------------------------------------------
+
+class TestViewPerMessageRendering:
+
+    @_xfail
+    def test_message_with_render_markdown_true_consumes_asterisks(self, qtbot):
+        """A message with render_markdown=True must be rendered as HTML — asterisks consumed."""
+        from signal_chain.models.conversation import ConversationMessage
+        from signal_chain.views.conversation_view import ConversationView
+
+        # TypeError today: render_markdown not a field → xfail
+        msg = ConversationMessage(
+            id="msg_0000",
+            role="assistant",
+            content="**bold**",
+            timestamp="2026-01-01T00:00:00+00:00",
+            render_markdown=True,
+        )
+        view = ConversationView()
+        qtbot.addWidget(view)
+        # FLAG-B: show_conversation shape; view tests assume ConversationMessage objects
+        view.show_conversation([msg])
+
+        html = view._display.toHtml()
+        assert "**bold**" not in html, (
+            "render_markdown=True: asterisks must be consumed by markdown rendering; "
+            "**bold** must not appear literally in toHtml() output (FLAG-B)"
+        )
+
+    @_xfail
+    def test_message_with_render_markdown_false_preserves_asterisks(self, qtbot):
+        """A message with render_markdown=False must display as plain text — asterisks present."""
+        from signal_chain.models.conversation import ConversationMessage
+        from signal_chain.views.conversation_view import ConversationView
+
+        # TypeError today → xfail
+        msg = ConversationMessage(
+            id="msg_0000",
+            role="assistant",
+            content="**bold**",
+            timestamp="2026-01-01T00:00:00+00:00",
+            render_markdown=False,
+        )
+        view = ConversationView()
+        qtbot.addWidget(view)
+        view.show_conversation([msg])
+
+        html = view._display.toHtml()
+        assert "**bold**" in html, (
+            "render_markdown=False: **bold** must appear as literal text; "
+            "* is not HTML-special and must survive setHtml/toHtml (FLAG-B)"
+        )
+
+    @_xfail
+    def test_mixed_render_markdown_flags_render_per_message(self, qtbot):
+        """A conversation with mixed flags must render each message in its own mode,
+        not one global mode for the whole conversation."""
+        from signal_chain.models.conversation import ConversationMessage
+        from signal_chain.views.conversation_view import ConversationView
+
+        # TypeError today → xfail
+        msg_on = ConversationMessage(
+            id="msg_0000",
+            role="assistant",
+            content="**markdown on**",
+            timestamp="2026-01-01T00:00:00+00:00",
+            render_markdown=True,
+        )
+        msg_off = ConversationMessage(
+            id="msg_0001",
+            role="assistant",
+            content="**markdown off**",
+            timestamp="2026-01-01T00:00:01+00:00",
+            render_markdown=False,
+        )
+        view = ConversationView()
+        qtbot.addWidget(view)
+        view.show_conversation([msg_on, msg_off])
+
+        html = view._display.toHtml()
+        assert "**markdown on**" not in html, (
+            "render_markdown=True message: asterisks must be consumed (FLAG-B)"
+        )
+        assert "**markdown off**" in html, (
+            "render_markdown=False message: asterisks must be preserved (FLAG-B)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Integration — MainWindow: pedal stamps at generation, toggle freezes
+# ---------------------------------------------------------------------------
+
+class TestMainWindowIntegration:
+
+    @_xfail
+    def test_pedal_stamps_at_generation_and_toggle_is_frozen(self, qtbot):
+        """Full integration: pedal state at generation drives the stamp; toggling
+        afterwards does NOT re-render already-displayed messages.
+
+        Setup:  pedal OFF (default) → generation of "**bold**"
+        Assert: rendered HTML shows asterisks (plain text — pedal was off)
+        Toggle: pedal ON
+        Assert: HTML unchanged — the completed message is frozen at its stamp
+
+        xfail today:
+          - _render_all_messages() renders unconditionally as markdown regardless
+            of pedal state, so asterisks are consumed → first assertion fails.
+          - No wiring exists between _pedalboard_vm and rendering at all.
+
+        This test covers the footswitch-seam gap that #127's global re-render design
+        missed. FLAG-A applies: stamp location determines how the pedalboard state
+        reaches the completed message.
+        """
+        from signal_chain.models.conversation import Conversation
+        from signal_chain.viewmodels.conversation import ConversationViewModel
+        from signal_chain.views.main_window import MainWindow
+
+        class _FakeProvider:
+            def list_models(self):
+                return []
+            def load_model(self, model_id):
+                pass
+            def generate_stream(self, messages, config):
+                yield "**bold**"
+            def validate_config(self):
+                return True
+
+        window = MainWindow()
+        qtbot.addWidget(window)
+
+        vm = ConversationViewModel(provider=_FakeProvider())
+        conv = Conversation.create(provider="test", model_id="test-model")
+        vm.set_conversation(conv)
+        window.conversation_view.set_viewmodel(vm)
+
+        # Pedal starts OFF (PedalboardViewModel default) — stamp will be render_markdown=False
+        assert not window._pedalboard_vm._by_id["markdown"].enabled, (
+            "precondition: markdown pedal must start disabled"
+        )
+
+        with qtbot.waitSignal(vm.generation_complete, timeout=5000):
+            vm.send_message("hello")
+
+        # Pedal was OFF → message must be stamped render_markdown=False → plain text.
+        # Today: _render_all_messages() renders unconditionally as markdown → asterisks
+        # consumed → "**bold**" NOT in HTML → this assertion fails → xfail.
+        html_after_gen = window.conversation_view._display.toHtml()
+        assert "**bold**" in html_after_gen, (
+            "pedal OFF at generation time → message must render as plain text; "
+            "asterisks must be present in toHtml() output (FLAG-A: stamp location)"
+        )
+
+        # Toggle pedal ON — must NOT re-render the already-stamped message.
+        # The frozen stamp (render_markdown=False) must hold.
+        window._pedalboard_vm.toggle_module("markdown")
+        html_after_toggle = window.conversation_view._display.toHtml()
+
+        assert html_after_gen == html_after_toggle, (
+            "toggling pedal after generation must not re-render already-displayed messages; "
+            "per-message stamp is frozen at generation time (footswitch-seam guard)"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -214,13 +324,12 @@ class TestRegressionGuard:
     def test_markdown_footswitch_flips_enabled_state(self):
         """toggle_module('markdown') must flip and restore the enabled flag.
 
-        Already implemented in PedalboardViewModel. This test guards against
-        regression — it passes today and must continue to pass after #127.
+        Already implemented in PedalboardViewModel. Guards against regression.
         """
         from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
         vm = PedalboardViewModel()
-        initial = vm._by_id["markdown"].enabled  # do not assert specific default
+        initial = vm._by_id["markdown"].enabled
         vm.toggle_module("markdown")
         assert vm._by_id["markdown"].enabled is not initial, (
             "first toggle must flip enabled away from its initial state"
