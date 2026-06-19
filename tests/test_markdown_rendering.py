@@ -51,6 +51,30 @@ _xfail = pytest.mark.xfail(
     strict=True,
     reason="per-message frozen markdown rendering not yet implemented",
 )
+_xfail_reloc = pytest.mark.xfail(
+    strict=True,
+    reason="writer.markdown relocation (#134) not yet implemented",
+)
+
+
+class _FakeProvider:
+    """Minimal provider stub: yields '**bold**' without real network calls.
+
+    Shared across TestMainWindowIntegration tests so asterisk presence/absence
+    in toHtml() is a reliable rendering signal.
+    """
+
+    def list_models(self):
+        return []
+
+    def load_model(self, model_id):
+        pass
+
+    def generate_stream(self, messages, config):
+        yield "**bold**"
+
+    def validate_config(self):
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -295,6 +319,10 @@ class TestMainWindowIntegration:
         with qtbot.waitSignal(vm.generation_complete, timeout=5000):
             vm.send_message("hello")
 
+        # Flush QTimer.singleShot(0, ...) from _render_all_messages so the scrollbar
+        # callback fires while the widget is alive, not during the next test's teardown.
+        qtbot.wait(50)
+
         # Pedal was OFF → message must be stamped render_markdown=False → plain text.
         # Today: _render_all_messages() renders unconditionally as markdown → asterisks
         # consumed → "**bold**" NOT in HTML → this assertion fails → xfail.
@@ -312,6 +340,76 @@ class TestMainWindowIntegration:
         assert html_after_gen == html_after_toggle, (
             "toggling pedal after generation must not re-render already-displayed messages; "
             "per-message stamp is frozen at generation time (footswitch-seam guard)"
+        )
+
+    def test_pedal_on_at_generation_renders_markdown(self, qtbot):
+        """Pedal ON at generation → message renders as markdown, asterisks consumed.
+
+        Characterization: today's unconditional rendering already passes this; must
+        stay green once the builder wires the stamp-and-render path through the writer.
+        Not xfail — let it report honestly.
+        """
+        from signal_chain.models.conversation import Conversation
+        from signal_chain.viewmodels.conversation import ConversationViewModel
+        from signal_chain.views.main_window import MainWindow
+
+        window = MainWindow()
+        qtbot.addWidget(window)
+
+        vm = ConversationViewModel(provider=_FakeProvider())
+        conv = Conversation.create(provider="test", model_id="test-model")
+        vm.set_conversation(conv)
+        window.conversation_view.set_viewmodel(vm)
+
+        if not window._pedalboard_vm._by_id["markdown"].enabled:
+            window._pedalboard_vm.toggle_module("markdown")
+        assert window._pedalboard_vm._by_id["markdown"].enabled, (
+            "precondition: markdown pedal must be on"
+        )
+
+        with qtbot.waitSignal(vm.generation_complete, timeout=5000):
+            vm.send_message("hello")
+
+        qtbot.wait(50)  # flush QTimer.singleShot(0, ...) before widget teardown
+
+        html = window.conversation_view._display.toHtml()
+        assert "**bold**" not in html, (
+            "pedal ON at generation → markdown rendered → asterisks must be consumed"
+        )
+
+    @_xfail
+    def test_pedal_off_at_generation_renders_plain(self, qtbot):
+        """Pedal OFF at generation → message renders as plain text, asterisks preserved.
+
+        xfail under the per-message-frozen marker: unconditional rendering ignores pedal
+        state today (same root cause as test_pedal_stamps_at_generation_and_toggle_is_frozen).
+        The gap is the missing pedal→render_markdown stamp, closed in the stamping cycle,
+        not the writer.markdown relocation.
+        """
+        from signal_chain.models.conversation import Conversation
+        from signal_chain.viewmodels.conversation import ConversationViewModel
+        from signal_chain.views.main_window import MainWindow
+
+        window = MainWindow()
+        qtbot.addWidget(window)
+
+        vm = ConversationViewModel(provider=_FakeProvider())
+        conv = Conversation.create(provider="test", model_id="test-model")
+        vm.set_conversation(conv)
+        window.conversation_view.set_viewmodel(vm)
+
+        assert not window._pedalboard_vm._by_id["markdown"].enabled, (
+            "precondition: markdown pedal must be off (PedalboardViewModel default)"
+        )
+
+        with qtbot.waitSignal(vm.generation_complete, timeout=5000):
+            vm.send_message("hello")
+
+        qtbot.wait(50)  # flush QTimer.singleShot(0, ...) before widget teardown
+
+        html = window.conversation_view._display.toHtml()
+        assert "**bold**" in html, (
+            "pedal OFF at generation → plain text → asterisks must be preserved in toHtml()"
         )
 
 
@@ -337,4 +435,93 @@ class TestRegressionGuard:
         vm.toggle_module("markdown")
         assert vm._by_id["markdown"].enabled is initial, (
             "second toggle must restore enabled to its initial state"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Cycle 1 relocation — writer.markdown unit and Humble View contract (#134)
+# ---------------------------------------------------------------------------
+
+
+class TestWriterMarkdownUnit:
+    """Unit tests for writer.markdown — widget-free, no Qt dependency.
+
+    Proposed entry point: render_message(text: str, *, markdown_on: bool) -> str
+      - markdown_on=True  → render text as Markdown, return HTML string
+      - markdown_on=False → return verbatim (HTML-escaped) text string
+
+    The builder may reshape the name/signature to fit the ADR-009 module surface
+    (BaseModule.execute dispatch, writer.<type>.<mode> convention, etc.) and update
+    these tests when un-xfailing. Naming is not the hill — the contract is.
+    """
+
+    @_xfail_reloc
+    def test_markdown_mode_consumes_asterisks(self):
+        """render_message(text, markdown_on=True) must render Markdown and consume
+        asterisks — **bold** must not appear literally in the returned string.
+
+        xfail today: ImportError — signal_chain.modules.writer.markdown does not exist.
+        """
+        # ImportError today: module does not exist → xfail
+        from signal_chain.modules.writer.markdown import render_message
+
+        result = render_message("**bold**", markdown_on=True)
+        assert "**bold**" not in result, (
+            "render_message(text, markdown_on=True): asterisks must be consumed; "
+            "**bold** must not appear literally in the returned string"
+        )
+
+    @_xfail_reloc
+    def test_plain_mode_preserves_asterisks(self):
+        """render_message(text, markdown_on=False) must return verbatim (escaped) text —
+        asterisks must be preserved as literal characters.
+
+        * is not HTML-special; it must survive the return value unchanged.
+        xfail today: ImportError — signal_chain.modules.writer.markdown does not exist.
+        """
+        from signal_chain.modules.writer.markdown import render_message
+
+        result = render_message("**bold**", markdown_on=False)
+        assert "**bold**" in result, (
+            "render_message(text, markdown_on=False): asterisks must be preserved; "
+            "* is not HTML-special and must appear literally in the returned string"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Humble View — conversation_view must not render markdown itself
+# ---------------------------------------------------------------------------
+
+
+class TestHumbleViewDelegation:
+
+    @_xfail_reloc
+    def test_conversation_view_delegates_rendering_to_writer(self):
+        """conversation_view.py must not import the markdown library.
+
+        Today _render_all_messages() does `import markdown as md_lib` — a Humble-View
+        violation (ADR-001/ADR-009). Once the builder relocates rendering to
+        writer.markdown the import disappears and this test passes.
+
+        Source read via importlib so the path is correct regardless of install layout.
+        xfail today: `import markdown as md_lib` is present → assertion fails.
+        """
+        import importlib.util
+        import re
+        from pathlib import Path
+
+        spec = importlib.util.find_spec("signal_chain.views.conversation_view")
+        assert spec is not None and spec.origin is not None, (
+            "signal_chain.views.conversation_view must be importable"
+        )
+        source = Path(spec.origin).read_text()
+
+        # Matches any import form that brings in the markdown package as a top-level name:
+        #   import markdown
+        #   import markdown as md_lib
+        has_markdown_import = bool(re.search(r"\bimport\s+markdown\b", source))
+
+        assert not has_markdown_import, (
+            "conversation_view must not import the markdown library; "
+            "rendering belongs in writer.markdown (Humble View, ADR-001/ADR-009)"
         )
