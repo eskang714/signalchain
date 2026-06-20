@@ -450,7 +450,7 @@ class TestWriterMarkdownUnit:
       - markdown_on=True  → render text as Markdown, return HTML string
       - markdown_on=False → return verbatim (HTML-escaped) text string
 
-    The builder may reshape the name/signature to fit the ADR-009 module surface
+    The builder may reshape the name/signature to fit the ADR-010 module surface
     (BaseModule.execute dispatch, writer.<type>.<mode> convention, etc.) and update
     these tests when un-xfailing. Naming is not the hill — the contract is.
     """
@@ -500,7 +500,7 @@ class TestHumbleViewDelegation:
         """conversation_view.py must not import the markdown library.
 
         Today _render_all_messages() does `import markdown as md_lib` — a Humble-View
-        violation (ADR-001/ADR-009). Once the builder relocates rendering to
+        violation (ADR-001/ADR-010). Once the builder relocates rendering to
         writer.markdown the import disappears and this test passes.
 
         Source read via importlib so the path is correct regardless of install layout.
@@ -523,5 +523,5 @@ class TestHumbleViewDelegation:
 
         assert not has_markdown_import, (
             "conversation_view must not import the markdown library; "
-            "rendering belongs in writer.markdown (Humble View, ADR-001/ADR-009)"
+            "rendering belongs in writer.markdown (Humble View, ADR-001/ADR-010)"
         )
