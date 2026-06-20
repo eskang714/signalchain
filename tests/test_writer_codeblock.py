@@ -5,7 +5,7 @@ Pins the contract for fence/inline parsing, fence-tag dispatch with monospace
 as the default and fallback, the markdown_on gate on md/markdown tags, and
 unclosed/streaming handling.
 
-Entry points (in signal_chain.modules.writer.codeblock):
+Entry points (in signal_chain.modules.writer.core):
   render_message(text: str, *, markdown_on: bool = False) -> str
   register(tag: str, handler: Callable[[str, str], str]) -> None
 
@@ -31,7 +31,7 @@ of the md-gate test in the same method. The builder must expose a teardown
 or scoped-registry mechanism to prevent cross-test contamination in future
 suites.
 
-All tests are xfail(strict=True): signal_chain.modules.writer.codeblock does
+All tests are xfail(strict=True): signal_chain.modules.writer.core does
 not exist; ImportError is the expected trigger until the builder's tock lands.
 """
 
@@ -62,7 +62,7 @@ class TestFenceDispatch:
           - Output contains code-block HTML (<pre> or <code>).
           - A registered handler is NOT called (no tag → no dispatch).
         """
-        from signal_chain.modules.writer.codeblock import register, render_message
+        from signal_chain.modules.writer.core import register, render_message
 
         handler_calls = []
 
@@ -98,7 +98,7 @@ class TestFenceDispatch:
           - Output contains code-block HTML (<pre> or <code>).
           - No exception is raised.
         """
-        from signal_chain.modules.writer.codeblock import render_message
+        from signal_chain.modules.writer.core import render_message
 
         # "python" has no registered handler in this test; fallback expected
         text = "```python\nprint('hello')\n```"
@@ -122,7 +122,7 @@ class TestFenceDispatch:
         Dispatch is markdown_on-agnostic for non-md tags: routing happens
         regardless of the markdown_on flag.
         """
-        from signal_chain.modules.writer.codeblock import register, render_message
+        from signal_chain.modules.writer.core import register, render_message
 
         handler_calls = []
 
@@ -161,7 +161,7 @@ class TestFenceDispatch:
         Note: both assertions are in the same test to avoid cross-test registry
         contamination from the 'md' handler registration.
         """
-        from signal_chain.modules.writer.codeblock import register, render_message
+        from signal_chain.modules.writer.core import register, render_message
 
         md_calls = []
 
@@ -217,7 +217,7 @@ class TestInlineCode:
           - Output contains inline code HTML (<code>).
           - No registered handler is called (inline spans are never dispatched).
         """
-        from signal_chain.modules.writer.codeblock import register, render_message
+        from signal_chain.modules.writer.core import register, render_message
 
         spy_calls = []
 
@@ -262,7 +262,7 @@ class TestStreamingResilience:
           - Output contains code-block HTML (<pre> or <code>).
           - No exception is raised.
         """
-        from signal_chain.modules.writer.codeblock import render_message
+        from signal_chain.modules.writer.core import render_message
 
         text = "```python\nprint('partial')\n"  # no closing ```
 
@@ -294,7 +294,7 @@ class TestProsePreservation:
           - Fence content also appears.
           - Both prose regions are present simultaneously with the code output.
         """
-        from signal_chain.modules.writer.codeblock import render_message
+        from signal_chain.modules.writer.core import render_message
 
         text = "before fence\n```\nsome code\n```\nafter fence"
         result = render_message(text, markdown_on=False)
@@ -308,3 +308,29 @@ class TestProsePreservation:
         assert "some code" in result, (
             "fence content must also appear in the output"
         )
+
+
+# ---------------------------------------------------------------------------
+# Facade — writer/__init__.py re-exports the public API from writer.core
+# ---------------------------------------------------------------------------
+
+
+class TestFacade:
+    """writer/__init__.py is a thin re-export facade (no logic).
+
+    This test forces the builder to wire __init__.py. Without it, writer.core
+    could ship in isolation and leave the package-level import path empty.
+    """
+
+    @_xfail_codeblock
+    def test_package_re_exports_render_message_and_register(self):
+        """from signal_chain.modules.writer import render_message, register must succeed.
+
+        The architecture decision specifies writer/__init__.py as a thin facade
+        re-exporting the public API from writer.core. This test fails until the
+        builder creates both writer/core.py and wires the __init__.py re-export.
+        """
+        from signal_chain.modules.writer import register, render_message  # noqa: F401
+
+        assert callable(render_message), "render_message must be callable via the facade"
+        assert callable(register), "register must be callable via the facade"
