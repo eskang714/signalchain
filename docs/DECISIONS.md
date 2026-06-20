@@ -2,6 +2,12 @@
 
 Decision log for signal-chain project architecture and significant technical choices.
 
+**Relationship types:** `Builds on` / `Extended by` (a decision and the one it derives from) · `Supersedes` / `Superseded by` (replacement) · `Related` (associative). ADR-001–005 are anchors — roots that carry no `Builds on`.
+
+**Revision history**
+- 2026-06 (#132) — consolidated scattered records into this single log (ADR-001–009).
+- 2026-06 (#136, this reform) — split ADR-009 into 009 (Module Organization) and 010 (The Writer Module and Markdown Rendering); added the bidirectional lineage graph; restated 010's per-message/pedal-driven model in one voice.
+
 ---
 
 ## ADR-001: Use MVVM Architecture Pattern
@@ -9,6 +15,8 @@ Decision log for signal-chain project architecture and significant technical cho
 **Status:** Accepted
 
 **Date:** May 2026
+
+**Extended by:** ADR-010 (The Writer Module and Markdown Rendering)
 
 ### Context
 Building a PyQt6 desktop application with multiple concurrent conversations. Need pattern that supports reactive UI updates and clear separation.
@@ -86,6 +94,8 @@ Apache License 2.0.
 
 **Date:** May 2026
 
+**Extended by:** ADR-007 (Pedal Module Naming Convention), ADR-009 (Module Organization Scheme)
+
 ### Context
 Need extensible module system without infinite maintenance burden.
 
@@ -109,6 +119,8 @@ Global modules (app-maintained) + User modules (community-maintained). User modu
 **Status:** Accepted
 
 **Date:** May 2026
+
+**Extended by:** ADR-006 (Qt/EGL Library Dependencies in GitHub Actions CI)
 
 ### Context
 Need version control, CI/CD, project tracking, and visibility.
@@ -134,6 +146,8 @@ GitHub for repo, GitHub Actions for CI, GitHub Issues for tickets, GitHub Projec
 **Status:** Accepted
 
 **Date:** May 2026
+
+**Builds on:** ADR-005 (GitHub as Primary Platform)
 
 ### Context
 PyQt6 applications require Qt runtime libraries to function, even in headless (GUI-less) environments. GitHub Actions runners on `ubuntu-latest` do not include these libraries by default, causing import failures when pytest attempts to load PyQt6 modules.
@@ -190,6 +204,10 @@ Configure Qt to run in offscreen mode using the `QT_QPA_PLATFORM=offscreen` envi
 
 **Date:** June 2026
 
+**Builds on:** ADR-004 (Two-Tier Module System)
+
+**Extended by:** ADR-008 (Network Gateway Gating Policy)
+
 ### Context
 Pedalboard pedal modules shared no naming marker. `MarkdownOutputModule`, `ConversationHistoryModule`, and `ConnectedAccountsModule` were indistinguishable in code from module-system infrastructure (`base`, `registry`, `runner`) and from the egress `NetworkGateway`. This ambiguity surfaced concretely while refreshing customer-facing docs: "Connected Accounts" had drifted between two distinct things — the provider selector a user pictures and the credential-vault module that actually wears the name — and the mismatch went unnoticed precisely because nothing in the naming signalled what was or wasn't a pedal.
 
@@ -245,6 +263,8 @@ The lowercase, unpolished form is a deliberate branding choice: each module read
 
 **Date:** June 2026
 
+**Builds on:** ADR-007 (Pedal Module Naming Convention)
+
 ### Context
 Wiring the generation path through a network gate (#106, "complete mediation") required settling how egress is gated. Three forks had paused that work: whether a module's calls to the user's selected LLM provider are gated or always allowed; what the default gateway should be when no policy is configured; and whether the gate applies to every network path or only some. Saltzer & Schroeder's complete-mediation principle argues every egress should pass one checkpoint — but a checkpoint that blocks the app's own provider, or that defaults to deny and breaks first run, is worse than the problem it solves. The policy had to mediate egress without obstructing the provider traffic the app exists to make.
 
@@ -283,11 +303,15 @@ Wiring the generation path through a network gate (#106, "complete mediation") r
 
 ---
 
-## ADR-009: Module Organization Scheme and the Writer Pattern
+## ADR-009: Module Organization Scheme
 
 **Status:** Proposed
 
 **Date:** June 2026
+
+**Builds on:** ADR-004 (Two-Tier Module System)
+
+**Extended by:** ADR-010 (The Writer Module and Markdown Rendering)
 
 ### Context
 
@@ -298,75 +322,101 @@ The module layer currently carries two organizational schemes at the same time.
 
 Both `ModuleRegistry` and `ModuleRunner` are built but not wired in: each is referenced only in its own file, so the composition root reaches neither. The only folder-style module that exists is `modules/global/conversation_history/` — and `conversation_history` also exists as the (dead) flat `pedal_conversationHistory.py`, so the same concept is represented in both schemes. A third disconnect sits on top: the pedalboard UI's six pedals are lightweight `PedalModule` data objects in `PedalboardViewModel` (id + enabled flag + LED), not the `BaseModule` pedal classes and not connected to them.
 
-Markdown handling is fragmented across three places that share no home: display rendering lives inline in `views/conversation_view.py`; fenced-block handling is implicit inside the `markdown`-library call made there; and markdown file export lives in `pedal_markdownOutput` (a `BaseModule` exposing a `write_file` function).
-
-This fragmentation surfaced concretely while building per-message rendering (#129): prose renders correctly when the markdown pedal is on, but a markdown document the model returns inside a fenced block tagged `markdown` is shown as a verbatim code block (which is correct CommonMark) rather than rendered. Inspection of real output revealed a compounding complication: the markdown document itself embeds a code fence — a `markdown`-tagged block wrapping a `python`-tagged block, both using three backticks. Because CommonMark closes a fence at the first run of backticks of equal-or-greater length, the outer block terminates at the inner fence's bare-backtick terminator and everything after it mis-renders. So the rendering decision this ADR assigns an owner must also cope with markdown documents that embed same-length code fences. No single component owns the decision "how is fenced output rendered?"
-
 ### Decision Drivers
 
-- **Information hiding / modular decomposition** — Parnas (1972). Decompose a system by isolating the design decisions likely to change and hiding each behind a module interface, rather than by processing steps. "How fenced content renders" is exactly such a decision and should sit behind one interface.
-- **Single Responsibility** — Martin (2003), which descends from Parnas and from cohesion: a module should have one reason to change. Markdown rendering currently has three places that change for the same reason.
-- **Coupling & cohesion** — Stevens, Myers & Constantine (1974). Functional cohesion is the strongest form; logical cohesion — grouping things merely because they are the same "kind" — is weak. A single module that switches between markdown/code/other by a flag would be logically cohesive; a thin dispatcher delegating to separately-cohesive per-type handlers is stronger, and matches the intent to keep each content type separate.
+- **Information hiding / modular decomposition** — Parnas (1972). Decompose a system by isolating the design decisions likely to change and hiding each behind a module interface, rather than by processing steps.
 - **Microkernel / plug-in architecture** — Richards, *Software Architecture Patterns* (2015; 2nd ed. 2022). A minimal core plus plug-in modules registered through a plug-in registry; a natural fit for product applications with pluggable, versioned features. This is precisely the shape `registry.py` and `runner.py` already sketch.
-- **Humble View / Presentation Model** — Fowler (2004); Gossman's MVVM (2005). The view should be passive, with presentation logic held outside it for testability. `conversation_view`'s own docstring states "zero business logic," yet it currently holds render logic. This aligns with ADR-001 and the Humble Object already used for providers.
-- **Open/Closed Principle** — Meyer (1988). Software entities should be open for extension but closed for modification: adding a new handler later should mean registering it, not editing the dispatcher.
-- **YAGNI** — Beck/Jeffries (Extreme Programming), with Fowler's refinement that YAGNI governs presumptive features, not the effort to make software easier to modify. Building the structure now is fine; building unused modes and handlers now is not. YAGNI's precondition — continuous refactoring, automated tests, CI — is satisfied by the project's tick-tock TDD and CI.
 
 ### Decision
 
-1. **Single module model.** Adopt the registry / microkernel plug-in scheme (`registry.py` + `runner.py` + `modules/global/` + `modules/user/` + `module.json` + the `BaseModule` contract) as the one module organization, and wire it into the composition root. Flat `pedal_*.py` modules migrate to it incrementally, one per ticket; the three dead flat pedals (`pedal_conversationHistory`, `pedal_webAccess`, `pedal_connectedAccounts`) are removed or folded into folder modules rather than carried forward.
-2. **The `writer` module.** Introduce a `writer` plug-in module that owns the rendered output of fenced content. It is a thin dispatcher over per-type handlers (`writer.<type>`) with per-mode functions (`.message`, `.super`), so new types and modes are added without modifying the core (Open/Closed).
-3. **First application — `writer.markdown.message`.** Implement markdown per-message rendering under `writer.markdown`. The render logic is relocated out of `views/conversation_view.py` (restoring the Humble View), and `writer.markdown` calls the existing `render_markdown` routine from #129 — that work is relocated, not rolled back.
-4. **Fence behavior (intentional departure from CommonMark).** When the markdown pedal is on: a fence whose language tag is `markdown`/`md` has its contents rendered as markdown; a fence tagged as a programming language (`python`, `bash`, …) stays verbatim; an untagged fence stays verbatim. This deliberately diverges from strict CommonMark (which renders every fence verbatim) because the tool exists to display the markdown the model returns, and models commonly deliver a markdown document inside a `markdown`-tagged fence. That document may itself contain code fences of the same delimiter length, so extracting the outer block's contents cannot rely on scanning for the next bare run of three backticks — nor on an off-the-shelf CommonMark parser, which mis-closes equal-length nested fences. This ADR fixes the dispatch rule; the nesting-aware extraction mechanism, and whether nested blocks are handled or scoped out of a first cut, are implementation choices deferred to the `writer.markdown` ticket and pinned by its tests.
-5. **Deferred (YAGNI).** `.super` (global-override mode) and non-markdown handlers (`writer.python`, …) are not built now. The structure leaves room for them; each is added test-first when actually needed.
+Adopt the registry / microkernel plug-in scheme (`registry.py` + `runner.py` + `modules/global/` + `modules/user/` + `module.json` + the `BaseModule` contract) as the single module organization, and wire it into the composition root. It is the concrete implementation of ADR-004's two-tier (global/user) policy. Flat `pedal_*.py` modules migrate to it incrementally, one per ticket; the three dead flat pedals (`pedal_conversationHistory`, `pedal_webAccess`, `pedal_connectedAccounts`) are removed or folded into folder modules rather than carried forward.
+
+### Consequences
+
+- **Positive:** One coherent module model; the dual-scheme ambiguity resolves as the migration proceeds and the layout becomes uniform.
+- **Positive:** Plug-in extensibility — new modules register through the scheme rather than being wired by hand.
+- **Negative:** Migration is incremental work; the module layout stays mixed until it completes.
+- **Neutral:** The microkernel's usual trade-off — the core can become a dependency bottleneck — applies but is minor at this scale.
+
+### Alternatives Considered
+
+1. **Status quo** — keep both schemes side by side.
+   - **Rejected:** leaves the fragmentation and does nothing for the "organize all modules" goal.
+2. **Big-bang reorganization** of every module at once.
+   - **Rejected:** high risk and against incremental discipline; migration can proceed module by module.
+
+### Open Questions / Follow-ups
+
+- **Registry/runner wiring & pedal cleanup.** Wiring `ModuleRegistry` and `ModuleRunner` into the composition root, migrating the one live flat pedal (`pedal_markdownOutput`), and deleting the three dead ones, are separate follow-up tickets.
+
+### References
+
+- Parnas, D. L. (1972). *On the Criteria To Be Used in Decomposing Systems into Modules.* Communications of the ACM, 15(12), 1053–1058.
+- Richards, M. (2015; 2nd ed. 2022). *Software Architecture Patterns.* O'Reilly Media. (Microkernel / plug-in architecture.)
+
+---
+
+## ADR-010: The Writer Module and Markdown Rendering
+
+**Status:** Accepted
+
+**Date:** June 2026
+
+**Builds on:** ADR-001 (MVVM / Humble View), ADR-009 (Module Organization Scheme)
+
+### Context
+
+Markdown handling is fragmented across three places that share no home: display rendering lives inline in `views/conversation_view.py`; fenced-block handling is implicit inside the `markdown`-library call made there; and markdown file export lives in `pedal_markdownOutput` (a `BaseModule` exposing a `write_file` function). The view holding render logic also contradicts its own docstring ("zero business logic") and the Humble-View principle from ADR-001.
+
+This fragmentation surfaced concretely while building per-message rendering (#129): prose renders correctly when the markdown pedal is on, but a markdown document the model returns inside a fenced block tagged `markdown` is shown as a verbatim code block (which is correct CommonMark) rather than rendered. Inspection of real output revealed a compounding complication: the markdown document itself embeds a code fence — a `markdown`-tagged block wrapping a `python`-tagged block, both using three backticks. Because CommonMark closes a fence at the first run of backticks of equal-or-greater length, the outer block terminates at the inner fence's bare-backtick terminator and everything after it mis-renders. No single component owns the decision "how is fenced output rendered?"
+
+### Decision Drivers
+
+- **Humble View / Presentation Model** — Fowler (2004); Gossman's MVVM (2005). The view should be passive, with presentation logic held outside it for testability. `conversation_view`'s own docstring states "zero business logic," yet it currently holds render logic. This aligns with ADR-001 and the Humble Object already used for providers.
+- **Single Responsibility** — Martin (2003), which descends from Parnas and from cohesion: a module should have one reason to change. Markdown rendering currently has three places that change for the same reason.
+- **Coupling & cohesion** — Stevens, Myers & Constantine (1974). Functional cohesion is the strongest form; logical cohesion — grouping things merely because they are the same "kind" — is weak. A single module that switches between markdown/code/other by a flag would be logically cohesive; a thin dispatcher delegating to separately-cohesive per-type handlers is stronger.
+- **Open/Closed Principle** — Meyer (1988). Adding a new handler later should mean registering it, not editing the dispatcher.
+- **YAGNI** — Beck/Jeffries (Extreme Programming), with Fowler's refinement that YAGNI governs presumptive features, not the effort to make software easier to modify. Building the structure now is fine; building unused modes and handlers now is not.
+
+### Decision
+
+1. **The `writer` module.** Introduce a `writer` plug-in module (under the ADR-009 scheme) that owns the rendered output of fenced content. It is a thin dispatcher over per-type handlers (`writer.<type>`) with per-mode functions, so new types and modes are added without modifying the core (Open/Closed).
+2. **First application — relocate markdown rendering.** Implement markdown rendering under `writer.markdown`, relocating the render logic out of `views/conversation_view.py` (restoring the Humble View). `writer.markdown` calls the existing `render_markdown` routine from #129 — that work is **relocated, not rolled back**.
+3. **Rendering is pedal-driven, carried by a per-message flag.** The markdown pedal's state decides whether output renders or stays plain. The per-message `render_markdown` boolean on `ConversationMessage` carries that decision and is **frozen at generation time**; the pedal sets its value at generation. Pedal-driven and per-message are *not* opposites — the pedal drives the value, the per-message flag freezes it, and the writer's per-message render mode (`.message`) consumes it. *(This restates, in one voice, what the combined record split across "per-message rendering" and "the per-message → pedal-driven reversal of #129," which read as a contradiction. It is one mechanism.)*
+4. **Fence behavior (intentional departure from CommonMark).** When the markdown pedal is on: a fence whose language tag is `markdown`/`md` has its contents rendered as markdown; a fence tagged as a programming language (`python`, `bash`, …) stays verbatim; an untagged fence stays verbatim. This deliberately diverges from strict CommonMark (which renders every fence verbatim) because the tool exists to display the markdown the model returns, and models commonly deliver a markdown document inside a `markdown`-tagged fence. That document may itself contain code fences of the same delimiter length, so extracting the outer block's contents cannot rely on scanning for the next bare run of three backticks — nor on an off-the-shelf CommonMark parser, which mis-closes equal-length nested fences. This ADR fixes the dispatch rule; the nesting-aware extraction mechanism, and whether nested blocks are handled or scoped out of a first cut, are implementation choices deferred to the `writer.markdown` tickets and pinned by their tests.
+5. **Deferred (YAGNI).** A global-override render mode (`.super`) and non-markdown handlers (`writer.python`, …) are not built now. The structure leaves room for them; each is added test-first when actually needed.
 6. **Naming.** Disambiguate the `render_markdown` flag (the per-message boolean stamped at generation) from the render routine; give them distinct names in the implementation.
 7. **Out of scope.** Foldable/collapsible headers. `QTextEdit` renders static HTML and cannot collapse sections; that would require a different display widget (e.g. `QWebEngineView`) and is a separate decision if ever pursued.
 
 ### Consequences
 
-- **Positive:** One cohesive home per concern; "how fenced output renders" is hidden behind `writer`'s interface.
-- **Positive:** The view becomes humble again, and render logic becomes unit-testable in isolation.
+- **Positive:** One cohesive home for "how fenced output renders," hidden behind `writer`'s interface; the view becomes humble again, and render logic becomes unit-testable in isolation.
 - **Positive:** New content types and modes are additive; separate handlers in separate files enable parallel work.
-- **Positive:** The dual-scheme ambiguity resolves as the migration proceeds; the layout becomes uniform.
-- **Negative:** Migration is incremental work; the module layout stays mixed until it completes.
 - **Negative:** `writer` must reliably tell markdown fences from code fences, which depends on the model's fence tagging (see Open Questions).
 - **Negative:** Markdown documents routinely embed code fences; with equal-length backticks the outer block's boundary is ambiguous to a standard parser, so the unwrap must be nesting-aware — or nested blocks must be explicitly scoped out of a first cut.
 - **Negative:** The fence-rendering behavior departs from CommonMark; intentional, but it must stay documented so it is not mistaken for a defect.
-- **Neutral:** Implementation lands in separate tickets after acceptance; this ADR commits to direction, not code.
-- **Neutral:** The microkernel's usual trade-off — the core can become a dependency bottleneck — applies but is minor at this scale.
+- **Neutral:** Implementation lands in separate tickets; this ADR commits to direction, not code. The relocation (first application) is in progress; the fence dispatch follows.
 
 ### Alternatives Considered
 
-1. **Status quo** — keep both schemes and patch markdown in the view.
-   - **Rejected:** leaves the fragmentation and the Humble-View violation, and does nothing for the broader "organize all modules" goal.
+1. **Status quo** — keep markdown logic in the view.
+   - **Rejected:** leaves the fragmentation and the Humble-View violation.
 2. **Narrow fix only** — unwrap markdown fences inside `conversation_view`.
    - **Rejected:** fixes the visible bug but deepens the violation (more logic in the view) and ignores the scheme split.
-3. **Big-bang reorganization** of every module at once.
-   - **Rejected:** high risk and against incremental discipline; migration can proceed module by module.
 
 ### Open Questions / Follow-ups
 
 - **Fence tagging (evidence in hand, with a caveat).** The fence rule assumes the model tags markdown documents with a `markdown`/`md` info string. Real output does tag the document `markdown`, so the signal exists. Caveat: that conversation's stored model metadata read `provider: ollama` / empty `model_id`, which did not match the Gemini selection shown in the app — confirm the behavior on a reply known to come from Gemini, and that it holds consistently. An untagged fence still carries no signal to separate markdown from code.
 - **Nested fences.** A `markdown`-tagged block can wrap a same-length code fence. Decide the handling at implementation time, driven by the tester tick's fence cases: track nesting (treat a language-tagged fence line as an opener and a bare three-backtick line as closing the innermost open fence) or scope nested blocks out of the first cut. The nesting heuristic works for well-tagged output but breaks if a code block is opened with a bare fence or a fence is left unclosed.
 - **Dispatch mapping.** How `writer.<type>.<mode>` maps onto `BaseModule.execute(function_name, parameters, …)` is to be settled in the implementation ticket.
-- **Registry/runner wiring & pedal cleanup.** Wiring `ModuleRegistry` and `ModuleRunner` into the composition root, migrating the one live flat pedal (`pedal_markdownOutput`), and deleting the three dead ones, are separate follow-up tickets.
-
-### Related Decisions
-
-- Extends ADR-001 (MVVM) and the Humble Object pattern already used for providers — relocating render out of the view restores the Humble View.
-- Records the per-message → pedal-driven reversal of #129's markdown rendering: that render logic is relocated into `writer.markdown` (gated by the markdown pedal), not rolled back — see Context and Decision 3.
-- The `writer.markdown` implementation, the registry/runner wiring, and deletion of the three dead flat pedals are separate follow-up tickets.
-- Cut by #132; absorbs the parked #129 branch (`feat/per-message-rendering`, 8a4e613) during implementation.
 
 ### References
 
-- Parnas, D. L. (1972). *On the Criteria To Be Used in Decomposing Systems into Modules.* Communications of the ACM, 15(12), 1053–1058.
 - Stevens, W. P., Myers, G. J., & Constantine, L. L. (1974). *Structured Design.* IBM Systems Journal, 13(2), 115–139.
 - Meyer, B. (1988). *Object-Oriented Software Construction.* Prentice Hall. (Open/Closed Principle.)
 - Martin, R. C. (2003). *Agile Software Development: Principles, Patterns, and Practices.* Prentice Hall. (Single Responsibility Principle.)
 - Fowler, M. (2004). *Presentation Model.* martinfowler.com.
 - Gossman, J. (2005). *Introduction to Model/View/ViewModel pattern for building WPF apps.*
-- Richards, M. (2015; 2nd ed. 2022). *Software Architecture Patterns.* O'Reilly Media. (Microkernel / plug-in architecture.)
 - Beck, K., & Jeffries, R. *Extreme Programming* (YAGNI); Fowler, M. (2015). *Yagni.* martinfowler.com.
 
 ---
