@@ -1,5 +1,5 @@
 """
-Tests for writer codeblock core — ticket #138.
+Tests for writer core — ticket #138.
 
 Pins the contract for fence/inline parsing, fence-tag dispatch with monospace
 as the default and fallback, the markdown_on gate on md/markdown tags, and
@@ -37,9 +37,9 @@ not exist; ImportError is the expected trigger until the builder's tock lands.
 
 import pytest
 
-_xfail_codeblock = pytest.mark.xfail(
+_xfail_writer_core = pytest.mark.xfail(
     strict=True,
-    reason="writer codeblock core (#138) not yet implemented",
+    reason="writer core (#138) not yet implemented",
 )
 
 
@@ -51,7 +51,7 @@ _xfail_codeblock = pytest.mark.xfail(
 class TestFenceDispatch:
     """Fence parsing and tag-based dispatch rules."""
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_untagged_fence_renders_as_monospace_and_is_not_dispatched(self):
         """An untagged fence must produce monospace-formatted output and must
         never invoke any registered handler.
@@ -88,7 +88,7 @@ class TestFenceDispatch:
             "untagged fence must not invoke any registered handler"
         )
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_tagged_fence_with_no_registered_handler_falls_back_to_monospace(self):
         """A fence tagged with a language that has no registered handler must
         fall back to monospace verbatim output, not an error or rendered markdown.
@@ -114,7 +114,7 @@ class TestFenceDispatch:
             "tagged fence with no handler must fall back to monospace (<pre> or <code>)"
         )
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_tagged_fence_with_registered_handler_routes_to_handler(self):
         """A fence tagged with a neutral tag that has a registered handler must
         route the fence's inner content to that handler and emit its return value.
@@ -148,7 +148,7 @@ class TestFenceDispatch:
             "handler's return value must appear in render_message output"
         )
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_md_tag_gated_by_markdown_on(self):
         """A fence tagged 'md' or 'markdown' is gated by the markdown_on argument.
 
@@ -206,7 +206,7 @@ class TestFenceDispatch:
 class TestInlineCode:
     """Single-backtick inline spans are monospace; dispatch is never invoked."""
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_inline_backtick_span_renders_as_monospace_without_dispatch(self):
         """A single-backtick inline code span must produce monospace output and
         must NOT invoke any registered handler.
@@ -252,7 +252,7 @@ class TestInlineCode:
 class TestStreamingResilience:
     """Unclosed/streaming fences: partial content as monospace, no exception."""
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_unclosed_fence_yields_partial_content_as_monospace_without_error(self):
         """An unclosed fence (mid-generation snapshot, no closing ```) must be
         handled gracefully: content rendered as monospace, no exception raised.
@@ -284,7 +284,7 @@ class TestStreamingResilience:
 class TestProsePreservation:
     """Prose outside code regions passes through unchanged."""
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_prose_outside_code_regions_is_preserved(self):
         """Text before, between, and after fences must not be consumed or altered
         by fence parsing.
@@ -322,7 +322,7 @@ class TestFacade:
     could ship in isolation and leave the package-level import path empty.
     """
 
-    @_xfail_codeblock
+    @_xfail_writer_core
     def test_package_re_exports_render_message_and_register(self):
         """from signal_chain.modules.writer import render_message, register must succeed.
 
