@@ -170,8 +170,9 @@ pre {
   border-radius: 4px;
   overflow-x: auto;
   margin: 6px 0;
+  line-height: 1.25;
 }
-pre code { background: none; padding: 0; }
+pre code { background: none; padding: 0; line-height: 1.25; }
 table {
   border-collapse: collapse;
   width: 100%;
