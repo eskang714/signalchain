@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from signal_chain.modules.writer import render_message as _render_message
 from signal_chain.viewmodels.conversation import ConversationViewModel
 
 
@@ -195,30 +196,11 @@ hr { border: none; border-top: 1px solid rgba(128,128,128,0.3); }
 """
 
     def _render_all_messages(self) -> None:
-        """Rebuild the display: user messages as escaped text, assistant as Markdown HTML."""
-        import markdown as md_lib
-
+        """Rebuild the display: user messages as escaped text, assistant via writer."""
         parts: list[str] = []
         for role, content in self._display_messages:
             if role == "assistant":
-                try:
-                    body = md_lib.markdown(
-                        content,
-                        extensions=[
-                            "fenced_code",
-                            "tables",
-                            "codehilite",
-                            "nl2br",
-                            "sane_lists",
-                        ],
-                    )
-                except Exception:
-                    escaped = (
-                        content.replace("&", "&amp;")
-                        .replace("<", "&lt;")
-                        .replace(">", "&gt;")
-                    )
-                    body = f"<pre>{escaped}</pre>"
+                body = _render_message(content, markdown_on=True)
                 parts.append(f"<p><b>Assistant:</b></p>{body}<hr/>")
             else:
                 escaped = (

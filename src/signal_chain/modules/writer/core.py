@@ -34,6 +34,13 @@ def _render_fence(tag: str, content: str, *, markdown_on: bool) -> str:
     return fallback
 
 
+def _get_prose_md_handler() -> tuple[Callable[[str, str], str], str] | None:
+    for tag in ("md", "markdown"):
+        if tag in _registry:
+            return _registry[tag], tag
+    return None
+
+
 def _render_prose(text: str) -> str:
     parts: list[str] = []
     i = 0
@@ -92,6 +99,15 @@ def render_message(text: str, *, markdown_on: bool = False) -> str:
             while i < len(lines) and not lines[i].startswith("```"):
                 prose_lines.append(lines[i])
                 i += 1
-            parts.append(_render_prose("\n".join(prose_lines)))
+            prose_text = "\n".join(prose_lines)
+            if markdown_on:
+                md_pair = _get_prose_md_handler()
+            else:
+                md_pair = None
+            if md_pair is not None:
+                handler_fn, handler_tag = md_pair
+                parts.append(handler_fn(prose_text, handler_tag))
+            else:
+                parts.append(_render_prose(prose_text))
 
     return "".join(parts)

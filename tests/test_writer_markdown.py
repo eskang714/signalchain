@@ -28,12 +28,6 @@ All tests are xfail(strict=True) except the nested-fence skip.
 
 import pytest
 
-_xfail_writer_markdown = pytest.mark.xfail(
-    strict=True,
-    reason="writer.markdown handler and segmenter prose routing (#146) not yet implemented",
-)
-
-
 # ---------------------------------------------------------------------------
 # writer.markdown in isolation
 # ---------------------------------------------------------------------------
@@ -42,7 +36,6 @@ _xfail_writer_markdown = pytest.mark.xfail(
 class TestWriterMarkdown:
     """writer.markdown.handle renders markdown source to HTML — no segmenter."""
 
-    @_xfail_writer_markdown
     def test_renders_heading_bold_and_list(self):
         """handle() must convert markdown headings, bold, and list items to HTML.
 
@@ -76,7 +69,6 @@ class TestWriterMarkdown:
 class TestSegmenterComposition:
     """render_message + writer.markdown wired — segmenter routing contracts."""
 
-    @_xfail_writer_markdown
     def test_prose_rendered_as_markdown_when_markdown_on(self):
         """Prose text is rendered as markdown when markdown_on=True.
 
@@ -107,7 +99,6 @@ class TestSegmenterComposition:
             "prose **bold** must produce <strong> when markdown_on=True"
         )
 
-    @_xfail_writer_markdown
     def test_md_fence_routed_through_markdown_handler_when_markdown_on(self):
         """A ```md fence is rendered via writer.markdown when markdown_on=True.
 
@@ -134,7 +125,6 @@ class TestSegmenterComposition:
             "md fence **bold** must produce <strong> via writer.markdown"
         )
 
-    @_xfail_writer_markdown
     def test_code_fence_clean_exit_no_trailing_empty_paragraph(self):
         """Code fences adjacent to markdown prose produce no trailing <p></p>.
 
@@ -177,7 +167,6 @@ class TestSegmenterComposition:
         finally:
             clear_registry()
 
-    @_xfail_writer_markdown
     def test_code_fence_content_never_routed_to_markdown_handler(self):
         """Code-fence content must NEVER be passed to the markdown handler.
 
@@ -220,7 +209,6 @@ class TestSegmenterComposition:
             "code must not enter the markdown library (ADR-010 Decision 2)"
         )
 
-    @_xfail_writer_markdown
     def test_pedal_gate_markdown_off_leaves_prose_plain_and_code_monospace(self):
         """markdown_on=False: prose stays plain (raw markdown syntax visible),
         code fence renders as <pre><code> (monospace, unchanged behavior).

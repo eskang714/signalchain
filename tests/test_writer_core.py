@@ -157,33 +157,38 @@ class TestFenceDispatch:
             md_calls.append(content)
             return "<md-handler-output>handled</md-handler-output>"
 
+        from signal_chain.modules.writer.core import clear_registry
+
         register("md", fake_md_handler)
         text = "```md\n**bold**\n```"
 
-        # markdown_on=True: handler must be called
-        result_on = render_message(text, markdown_on=True)
-        assert md_calls, (
-            "md-tagged fence: markdown_on=True must route to the registered md handler"
-        )
-        assert "**bold**" in md_calls[0], (
-            "md handler must receive the inner fence content"
-        )
-        assert "<md-handler-output>handled</md-handler-output>" in result_on, (
-            "md handler's return value must appear in output when markdown_on=True"
-        )
+        try:
+            # markdown_on=True: handler must be called
+            result_on = render_message(text, markdown_on=True)
+            assert md_calls, (
+                "md-tagged fence: markdown_on=True must route to the registered md handler"
+            )
+            assert "**bold**" in md_calls[0], (
+                "md handler must receive the inner fence content"
+            )
+            assert "<md-handler-output>handled</md-handler-output>" in result_on, (
+                "md handler's return value must appear in output when markdown_on=True"
+            )
 
-        # markdown_on=False: handler must NOT be called; content verbatim monospace
-        md_calls.clear()
-        result_off = render_message(text, markdown_on=False)
-        assert not md_calls, (
-            "md-tagged fence: markdown_on=False must NOT invoke the md handler"
-        )
-        assert "**bold**" in result_off, (
-            "md-tagged fence with markdown_on=False must render verbatim (asterisks preserved)"
-        )
-        assert any(t in result_off for t in ("<pre>", "<code>")), (
-            "md-tagged fence with markdown_on=False must fall back to monospace"
-        )
+            # markdown_on=False: handler must NOT be called; content verbatim monospace
+            md_calls.clear()
+            result_off = render_message(text, markdown_on=False)
+            assert not md_calls, (
+                "md-tagged fence: markdown_on=False must NOT invoke the md handler"
+            )
+            assert "**bold**" in result_off, (
+                "md-tagged fence with markdown_on=False must render verbatim (asterisks preserved)"
+            )
+            assert any(t in result_off for t in ("<pre>", "<code>")), (
+                "md-tagged fence with markdown_on=False must fall back to monospace"
+            )
+        finally:
+            clear_registry()
 
 
 # ---------------------------------------------------------------------------

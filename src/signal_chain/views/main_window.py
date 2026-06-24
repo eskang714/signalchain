@@ -3,6 +3,8 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QMainWindow, QSplitter, QStatusBar, QVBoxLayout, QWidget
 
+from signal_chain.modules.writer import register as _writer_register
+from signal_chain.modules.writer.markdown import handle as _md_handle
 from signal_chain.views.conversation_list_view import ConversationListView
 from signal_chain.views.conversation_view import ConversationView
 from signal_chain.views.pedalboard_view import Pedalboard
@@ -18,6 +20,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        _writer_register("md", _md_handle)
         self.setWindowTitle("Signal Chain")
         self.resize(1200, 800)
 

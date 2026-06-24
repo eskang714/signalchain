@@ -51,10 +51,6 @@ _xfail = pytest.mark.xfail(
     strict=True,
     reason="per-message frozen markdown rendering not yet implemented",
 )
-_xfail_reloc = pytest.mark.xfail(
-    strict=True,
-    reason="writer.markdown relocation (#134) not yet implemented",
-)
 
 
 class _FakeProvider:
@@ -439,63 +435,12 @@ class TestRegressionGuard:
 
 
 # ---------------------------------------------------------------------------
-# Cycle 1 relocation — writer.markdown unit and Humble View contract (#134)
-# ---------------------------------------------------------------------------
-
-
-class TestWriterMarkdownUnit:
-    """Unit tests for writer.markdown — widget-free, no Qt dependency.
-
-    Proposed entry point: render_message(text: str, *, markdown_on: bool) -> str
-      - markdown_on=True  → render text as Markdown, return HTML string
-      - markdown_on=False → return verbatim (HTML-escaped) text string
-
-    The builder may reshape the name/signature to fit the ADR-010 module surface
-    (BaseModule.execute dispatch, writer.<type>.<mode> convention, etc.) and update
-    these tests when un-xfailing. Naming is not the hill — the contract is.
-    """
-
-    @_xfail_reloc
-    def test_markdown_mode_consumes_asterisks(self):
-        """render_message(text, markdown_on=True) must render Markdown and consume
-        asterisks — **bold** must not appear literally in the returned string.
-
-        xfail today: ImportError — signal_chain.modules.writer.markdown does not exist.
-        """
-        # ImportError today: module does not exist → xfail
-        from signal_chain.modules.writer.markdown import render_message
-
-        result = render_message("**bold**", markdown_on=True)
-        assert "**bold**" not in result, (
-            "render_message(text, markdown_on=True): asterisks must be consumed; "
-            "**bold** must not appear literally in the returned string"
-        )
-
-    @_xfail_reloc
-    def test_plain_mode_preserves_asterisks(self):
-        """render_message(text, markdown_on=False) must return verbatim (escaped) text —
-        asterisks must be preserved as literal characters.
-
-        * is not HTML-special; it must survive the return value unchanged.
-        xfail today: ImportError — signal_chain.modules.writer.markdown does not exist.
-        """
-        from signal_chain.modules.writer.markdown import render_message
-
-        result = render_message("**bold**", markdown_on=False)
-        assert "**bold**" in result, (
-            "render_message(text, markdown_on=False): asterisks must be preserved; "
-            "* is not HTML-special and must appear literally in the returned string"
-        )
-
-
-# ---------------------------------------------------------------------------
 # Humble View — conversation_view must not render markdown itself
 # ---------------------------------------------------------------------------
 
 
 class TestHumbleViewDelegation:
 
-    @_xfail_reloc
     def test_conversation_view_delegates_rendering_to_writer(self):
         """conversation_view.py must not import the markdown library.
 
