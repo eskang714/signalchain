@@ -51,12 +51,6 @@ FLAGS for the builder (do NOT decide by implementing):
 import pytest
 from PyQt6.QtGui import QFontMetricsF
 
-_xfail_code_spacing = pytest.mark.xfail(
-    strict=True,
-    reason="code-block row pitch and trailing empty paragraph fix (#149) not yet implemented",
-)
-
-
 # ---------------------------------------------------------------------------
 # Document-block helpers (no imports of unimplemented code)
 # ---------------------------------------------------------------------------
@@ -130,7 +124,6 @@ def _code_font(code_blocks):
 class TestCodeBlockLayout:
     """Qt QTextDocument layout assertions for code-block rendering — ticket #149."""
 
-    @_xfail_code_spacing
     def test_code_block_row_pitch_is_flush(self, qtbot):
         """Every row-to-row pitch inside a code block must be ≤ font height + epsilon.
 
@@ -189,7 +182,6 @@ class TestCodeBlockLayout:
                 "(current: line-height: 1.25 inflates pitch by ~3.5px per row)"
             )
 
-    @_xfail_code_spacing
     def test_code_block_leaves_no_trailing_empty_paragraph(self, qtbot):
         """A message ending in a code block must leave no trailing empty paragraph.
 
