@@ -1,224 +1,175 @@
 # Architecture Decision Records (ADRs)
 
-Decision log for signal-chain project architecture and significant technical choices.
+Decision log for the signal-chain project's architecture and significant technical choices.
 
-**Relationship types:** `Builds on` / `Extended by` (a decision and the one it derives from) · `Supersedes` / `Superseded by` (replacement) · `Related` (associative). ADR-001–005 are anchors — roots that carry no `Builds on`.
+**Relationship types:** `Builds on` / `Extended by` (a decision and the one it derives from) · `Supersedes` / `Superseded by` (replacement) · `Related` (associative). ADR-001–005 are anchors — roots with no `Builds on`.
 
 **Revision history**
 - 2026-06 (#132) — consolidated scattered records into this single log (ADR-001–009).
-- 2026-06 (#136, this reform) — split ADR-009 into 009 (Module Organization) and 010 (The Writer Module and Markdown Rendering); added the bidirectional lineage graph; restated 010's per-message/pedal-driven model in one voice.
+- 2026-06 (#136) — split ADR-009 into 009 (Module Organization) and 010 (Writer Module); added the lineage graph; restated 010's per-message/pedal-driven model in one voice.
+- 2026-06 (#144) — normalized all records to one structure and voice; revised ADR-010 Decision 2 to the segmenter composition (before-state and rationale in the issue comment); expanded the open-questions/follow-ups in ADR-009 and ADR-010 into tracked items; recorded #106 (ADR-008) as landed.
+
+**Maintenance.** Open questions are validated lazily — an assumption is confirmed when the code depending on it is next touched, or when something breaks. Breakage is the signal to revisit the affected record; there is no periodic validation sweep. *(Proposed addition — strike if you'd rather not state a policy in the doc.)*
 
 ---
 
-## ADR-001: Use MVVM Architecture Pattern
+## ADR-001: MVVM Architecture Pattern
 
-**Status:** Accepted
-
-**Date:** May 2026
-
-**Extended by:** ADR-010 (The Writer Module and Markdown Rendering)
+**Status:** Accepted · **Date:** May 2026
+**Extended by:** ADR-010 (Writer Module)
 
 ### Context
-Building a PyQt6 desktop application with multiple concurrent conversations. Need pattern that supports reactive UI updates and clear separation.
+A PyQt6 desktop app running multiple concurrent conversations needs reactive UI updates and clear separation of concerns.
 
 ### Decision
-Use MVVM (Model-View-ViewModel) pattern.
+Use the MVVM (Model-View-ViewModel) pattern.
 
 ### Consequences
-- ViewModels use PyQt signals for reactive updates
-- Views contain zero business logic
-- Models remain pure data
-- Slight learning curve if developer used to MVC
+- ViewModels use PyQt signals for reactive updates.
+- Views hold zero business logic; Models stay pure data.
+- Slight learning curve coming from MVC.
 
 ### Alternatives Considered
-- MVC: Standard but PyQt6's signal/slot system maps better to MVVM
-- Clean Architecture: Too much overhead for V1
-- Flat structure: Insufficient for multi-conversation complexity
+- **MVC** — standard, but PyQt6's signal/slot system maps more naturally to MVVM.
+- **Clean Architecture** — too much overhead for V1.
+- **Flat structure** — insufficient for multi-conversation complexity.
 
 ---
 
-## ADR-002: Use uv for Package Management
+## ADR-002: uv for Package Management
 
-**Status:** Accepted
-
-**Date:** May 2026
+**Status:** Accepted · **Date:** May 2026
 
 ### Context
-Need Python package and virtual environment management.
+Need Python package and virtual-environment management.
 
 ### Decision
-Use uv (from Astral).
+Use uv (Astral).
 
 ### Consequences
-- Faster install times
-- Single tool for packages and environments
-- Modern industry trend in 2025-2026
-- Some older tutorials assume pip
+- Faster installs; one tool for packages and environments.
+- Current industry trend; some older tutorials still assume pip.
 
 ### Alternatives Considered
-- pip + venv: Standard but slower, manual venv activation
-- Poetry: Popular but heavier, slower than uv
-- pipenv: Falling out of favor
+- **pip + venv** — standard, but slower and needs manual activation.
+- **Poetry** — popular but heavier and slower than uv.
+- **pipenv** — falling out of favor.
 
 ---
 
 ## ADR-003: Apache 2.0 License
 
-**Status:** Accepted
-
-**Date:** May 2026
+**Status:** Accepted · **Date:** May 2026
 
 ### Context
-Need license that allows future commercialization while supporting open source adoption.
+Need a license that allows future commercialization while supporting open-source adoption.
 
 ### Decision
 Apache License 2.0.
 
 ### Consequences
-- Allows future closed source derivatives
-- Patent protection from contributors
-- Enterprise-friendly
-- Slightly longer license text than MIT
+- Allows future closed-source derivatives; patent protection from contributors; enterprise-friendly.
+- Slightly longer text than MIT.
 
 ### Alternatives Considered
-- MIT: Simpler but lacks patent protection
-- GPL: Restricts commercial use too heavily
-- BSL: Bait-and-switch perception risk
-- Proprietary: Conflicts with portfolio goals
+- **MIT** — simpler, but no patent protection.
+- **GPL** — restricts commercial use too heavily.
+- **BSL** — bait-and-switch perception risk.
+- **Proprietary** — conflicts with portfolio goals.
 
 ---
 
 ## ADR-004: Two-Tier Module System
 
-**Status:** Accepted
-
-**Date:** May 2026
-
-**Extended by:** ADR-007 (Pedal Module Naming Convention), ADR-009 (Module Organization Scheme)
+**Status:** Accepted · **Date:** May 2026
+**Extended by:** ADR-007 (Pedal Naming), ADR-009 (Module Organization)
 
 ### Context
-Need extensible module system without infinite maintenance burden.
+Need an extensible module system without an unbounded maintenance burden.
 
 ### Decision
-Global modules (app-maintained) + User modules (community-maintained). User modules isolated from each other.
+Two tiers: **global** modules (app-maintained) and **user** modules (community-maintained). User modules are isolated from each other.
 
 ### Consequences
-- Clear ownership: app maintains 6 global modules, community owns rest
-- User modules cannot access each other (isolation)
-- Module validation has two-phase approach (structural + optional AI security check)
+- Clear ownership: the app maintains the global modules; the community owns the rest.
+- User modules cannot access each other (isolation).
+- Module validation is two-phase (structural + optional AI security check).
 
 ### Alternatives Considered
-- Single flat module system: Maintenance scope unbounded
-- No user modules: Limits extensibility
-- Full sandboxing: Too complex for V1
+- **Single flat system** — maintenance scope unbounded.
+- **No user modules** — limits extensibility.
+- **Full sandboxing** — too complex for V1.
 
 ---
 
 ## ADR-005: GitHub as Primary Platform
 
-**Status:** Accepted
-
-**Date:** May 2026
-
-**Extended by:** ADR-006 (Qt/EGL Library Dependencies in GitHub Actions CI)
+**Status:** Accepted · **Date:** May 2026
+**Extended by:** ADR-006 (Qt/EGL CI Dependencies)
 
 ### Context
 Need version control, CI/CD, project tracking, and visibility.
 
 ### Decision
-GitHub for repo, GitHub Actions for CI, GitHub Issues for tickets, GitHub Projects for tracking.
+GitHub for the repo, Actions for CI, Issues for tickets, Projects for tracking.
 
 ### Consequences
-- All tooling in one place
-- Public portfolio visibility
-- Direct integration with Claude Code via GitHub CLI
-- Free for public repos
+- All tooling in one place; public portfolio visibility.
+- Direct Claude Code integration via the GitHub CLI; free for public repos.
 
 ### Alternatives Considered
-- GitLab: Equivalent functionality but less industry visibility
-- Bitbucket: Less common in 2025-2026
-- Self-hosted: Overhead without benefit for solo dev
+- **GitLab** — equivalent, but less industry visibility.
+- **Bitbucket** — less common.
+- **Self-hosted** — overhead without benefit for a solo dev.
 
 ---
 
-## ADR-006: Qt/EGL Library Dependencies in GitHub Actions CI
+## ADR-006: Qt/EGL Library Dependencies in CI
 
-**Status:** Accepted
-
-**Date:** May 2026
-
+**Status:** Accepted · **Date:** May 2026
 **Builds on:** ADR-005 (GitHub as Primary Platform)
 
 ### Context
-PyQt6 applications require Qt runtime libraries to function, even in headless (GUI-less) environments. GitHub Actions runners on `ubuntu-latest` do not include these libraries by default, causing import failures when pytest attempts to load PyQt6 modules.
+PyQt6 needs Qt runtime libraries even headless. `ubuntu-latest` runners don't include them, so pytest's PyQt6 import failed:
 
-The initial CI workflow failed with:
 ```
 libEGL.so.1: cannot open shared object file: No such file or directory
 ```
 
-This prevented any PyQt6-dependent tests from running in the automated CI pipeline.
+This blocked every PyQt6-dependent test in CI.
 
 ### Decision
-Add system-level Qt/EGL library dependencies to the CI workflow via `apt-get install`. Specifically:
-- `libegl1` - EGL library
-- `libgl1` - OpenGL library
-- `libxkbcommon0` - Keyboard input handling
-- `libdbus-1-3` - D-Bus daemon (Qt dependency)
-
-Configure Qt to run in offscreen mode using the `QT_QPA_PLATFORM=offscreen` environment variable, which tells Qt to render without accessing a display server.
+Install the Qt/EGL system libraries in the CI workflow via `apt-get`, and run Qt headless via `QT_QPA_PLATFORM=offscreen`:
+- `libegl1` (EGL), `libgl1` (OpenGL), `libxkbcommon0` (keyboard), `libdbus-1-3` (D-Bus).
 
 ### Consequences
-- **Positive:** CI workflow now successfully imports and tests PyQt6 code in headless runners. Tests that exercise GUI components can run without requiring display virtualization (xvfb).
-- **Positive:** Minimal overhead—library installation adds ~2-3 seconds to CI runtime.
-- **Negative:** CI environment is no longer a "bare" Python environment; it includes Qt system dependencies that would not be present in minimal deployment targets.
-- **Negative:** If Qt library versions in the runner diverge from development environments, compatibility issues may arise.
+- **Positive:** CI imports and tests PyQt6 in headless runners without xvfb; ~2–3 s overhead.
+- **Negative:** The CI environment is no longer a bare Python environment; Qt version drift between runner and dev could surface compatibility issues.
 
 ### Alternatives Considered
+- **xvfb (virtual framebuffer)** — more complex, higher resource use. Rejected: unnecessary for headless testing.
+- **Mock PyQt6 in tests** — rejected: we need to verify real PyQt6 integration, not just business logic.
+- **Skip GUI tests in CI** — rejected: reduces confidence and defeats the purpose of CI.
 
-1. **Use xvfb (Virtual Framebuffer)**
-   - Install and configure xvfb to provide a virtual display
-   - More complex setup, higher resource usage
-   - Better isolation from host system libraries
-   - **Rejected:** Unnecessary complexity for headless testing
-
-2. **Mock PyQt6 in Tests**
-   - Mock Qt components during testing, test only business logic
-   - Reduces Qt library dependency in CI
-   - **Rejected:** We need to verify actual PyQt6 integration, not just business logic
-
-3. **Skip GUI Tests in CI**
-   - Mark GUI tests with `@pytest.mark.skip` in CI
-   - Reduces CI requirements
-   - **Rejected:** Reduces confidence in GUI code quality; defeats purpose of CI
-
-### Related Decisions
-- Follows from the choice to use PyQt6 as the UI framework
-- Informs the CI/CD strategy for handling framework-specific testing requirements
+### Related
+- Follows from choosing PyQt6 as the UI framework; informs the CI strategy for framework-specific testing.
 
 ---
 
 ## ADR-007: Pedal Module Naming Convention
 
-**Status:** Accepted
-
-**Date:** June 2026
-
+**Status:** Accepted · **Date:** June 2026
 **Builds on:** ADR-004 (Two-Tier Module System)
-
-**Extended by:** ADR-008 (Network Gateway Gating Policy)
+**Extended by:** ADR-008 (Network Gateway Gating)
 
 ### Context
-Pedalboard pedal modules shared no naming marker. `MarkdownOutputModule`, `ConversationHistoryModule`, and `ConnectedAccountsModule` were indistinguishable in code from module-system infrastructure (`base`, `registry`, `runner`) and from the egress `NetworkGateway`. This ambiguity surfaced concretely while refreshing customer-facing docs: "Connected Accounts" had drifted between two distinct things — the provider selector a user pictures and the credential-vault module that actually wears the name — and the mismatch went unnoticed precisely because nothing in the naming signalled what was or wasn't a pedal.
-
-Beyond disambiguation, the project's identity is the guitar signal chain: pedals patched into a chain. The naming should carry that identity, not read as generic Python.
+Pedalboard pedals shared no naming marker, so `MarkdownOutputModule`, `ConversationHistoryModule`, and `ConnectedAccountsModule` were indistinguishable from module-system infrastructure (`base`, `registry`, `runner`) and from the egress `NetworkGateway`. The ambiguity surfaced while refreshing docs: "Connected Accounts" had drifted between two different things — the provider selector users picture and the credential-vault module that actually wears the name — and nothing in the naming flagged what was or wasn't a pedal. Separately, the product's identity *is* the guitar signal chain; the naming should carry that, not read as generic Python.
 
 ### Decision
-Name every pedalboard pedal module with the `pedal_<camelCaseName>` convention, extending through `_<subModuleName>` segments for nested units:
-
+Name every pedalboard pedal `pedal_<camelCaseName>`, extending through `_<subModuleName>` for nested units:
 - class: `pedal_<camelCaseName>` (e.g. `pedal_markdownOutput`)
-- file: `pedal_<camelCaseName>.py` — matching the class, so the unit reads identically in the import path and the symbol
-- sub-modules append further segments: `pedal_markdownOutput_tableFormatter`
+- file: `pedal_<camelCaseName>.py` — matching the class, so the unit reads identically in import path and symbol
+- sub-modules append segments: `pedal_markdownOutput_tableFormatter`
 
 | Before | After |
 |--------|-------|
@@ -226,197 +177,203 @@ Name every pedalboard pedal module with the `pedal_<camelCaseName>` convention, 
 | `ConversationHistoryModule` | `pedal_conversationHistory` |
 | `ConnectedAccountsModule` | `pedal_connectedAccounts` |
 
-The `pedal_` prefix is reserved for user-facing pedals. Module-system infrastructure (`base`, `registry`, `runner`) and the egress `NetworkGateway` do not take it.
-
-The lowercase, unpolished form is a deliberate branding choice: each module reads as an unpatched pedal unit waiting to be patched into the signal chain, reinforcing the pedalboard identity — not merely a fix for the naming-drift that prompted it.
+The `pedal_` prefix is reserved for user-facing pedals. Infrastructure (`base`, `registry`, `runner`) and the egress `NetworkGateway` do not take it. The lowercase, unpolished form is deliberate branding — each module reads as an unpatched pedal waiting to be patched into the chain.
 
 ### Consequences
-- **Positive:** Pedals are unmistakable at a glance and visually distinct from infrastructure, closing the class of naming-drift that surfaced the Connected Accounts confusion.
-- **Positive:** Future pedals (Web Access, File Access, Clock) get an unambiguous pattern, and nested sub-modules have a defined form.
-- **Positive:** The naming carries the product's signal-chain identity.
-- **Negative:** Deliberate PEP8 deviation — class names are conventionally CapWords and module files snake_case. `ruff`'s current config doesn't select the `N` (pep8-naming) rules, so the suite stays green; if they're ever enabled, pedal modules will need `N801`/`N999` ignores.
-- **Negative:** Applying the convention requires a rename touching every reference (imports, registry, tests, type hints) — done as a separate chore, not silently.
+- **Positive:** Pedals are unmistakable and visually distinct from infrastructure, closing the naming-drift that caused the Connected Accounts confusion; future pedals get an unambiguous pattern; the naming carries the product identity.
+- **Negative:** Deliberate PEP8 deviation (class names are conventionally CapWords, files snake_case). `ruff` doesn't select the `N` rules, so the suite stays green; if enabled, pedals need `N801`/`N999` ignores.
+- **Negative:** Applying it touches every reference (imports, registry, tests, hints) — done as a separate chore, not silently.
 
 ### Alternatives Considered
+- **`Pedal<Name>` (PascalCase, PEP8-compliant)** — rejected: reads as a finished generic class; loses the unpatched-unit branding.
+- **Keep `<Name>Module`** — rejected: `Module` is shared by pedals and infrastructure, so it doesn't distinguish pedals — the exact gap that allowed the drift.
+- **Function-honest names** (`ProviderManager`, `CredentialVault`) — rejected: no systematic "this is a pedal" marker and no brand identity.
 
-1. **`Pedal<Name>` (PascalCase, PEP8-compliant)**
-   - Same `Pedal` marker, conventional casing, no lint concern.
-   - **Rejected:** Reads as a finished, generic class; loses the unpatched-unit feel that carries the branding.
-
-2. **Keep the existing `<Name>Module` suffix**
-   - No churn.
-   - **Rejected:** `Module` is shared by pedals and infrastructure alike, so it doesn't distinguish pedals — the exact gap that allowed the drift.
-
-3. **Function-honest names without a pedal marker** (`ProviderManager`, `CredentialVault`)
-   - Names each unit for what it does.
-   - **Rejected:** No systematic "this is a pedal" marker, and carries no brand identity.
-
-### Related Decisions
-- Applied by a separate `chore` ticket that performs the rename across the codebase.
-- Adjacent to the planned extraction of the provider-selector backend out of `app.py` (a distinct unit, not a pedal).
+### Related
+- **Rename — applied.** A separate `chore` ticket performed it; the `pedal_*` files are present in the tree (`pedal_markdownOutput.py`, `pedal_conversationHistory.py`, `pedal_webAccess.py`, `pedal_connectedAccounts.py`), confirmed by direct read.
+- **Provider-selector extraction** out of `app.py` (a distinct unit, not a pedal) — noted as adjacent work; status unconfirmed, left open until touched.
 
 ---
 
 ## ADR-008: Network Gateway Gating Policy
 
-**Status:** Accepted
-
-**Date:** June 2026
-
-**Builds on:** ADR-007 (Pedal Module Naming Convention)
+**Status:** Accepted · **Date:** June 2026
+**Builds on:** ADR-007 (Pedal Naming Convention)
 
 ### Context
-Wiring the generation path through a network gate (#106, "complete mediation") required settling how egress is gated. Three forks had paused that work: whether a module's calls to the user's selected LLM provider are gated or always allowed; what the default gateway should be when no policy is configured; and whether the gate applies to every network path or only some. Saltzer & Schroeder's complete-mediation principle argues every egress should pass one checkpoint — but a checkpoint that blocks the app's own provider, or that defaults to deny and breaks first run, is worse than the problem it solves. The policy had to mediate egress without obstructing the provider traffic the app exists to make.
+Wiring the generation path through a network gate (#106, complete mediation) required settling how egress is gated. Three forks had paused the work: whether a module's calls to the user's selected LLM provider are gated or always allowed; the default gateway when no policy is configured; and whether the gate covers every path or some. Saltzer & Schroeder's complete-mediation principle wants every egress through one checkpoint — but a checkpoint that blocks the app's own provider, or defaults to deny and breaks first run, is worse than the problem. The policy had to mediate egress without obstructing the provider traffic the app exists to make.
 
 ### Decision
-1. **`net:provider` is always granted.** A module's egress to the user's selected LLM provider is permitted unconditionally — the app cannot function if it cannot reach its own provider, so that traffic is never gated.
-2. **`_PermitGateway()` is the default (Null Object).** When no gating policy is configured, the gateway is a Null Object that permits all egress. Gating is therefore additive and opt-in: call sites run unchanged, and stricter gateways are introduced without modifying them (Open/Closed).
-3. **Gate the generation path only.** The network gate sits on the generation path; the provider probe/health-check path is excluded. Probes run to establish availability before a policy context exists and are not user-driven egress.
-4. **`net:provider` scope granularity is a known limitation.** The `net:provider` scope is coarse — it permits provider egress as a whole, not per-host or per-endpoint. Finer granularity is deferred and documented as a limitation rather than silently assumed.
+1. **`net:provider` is always granted.** Egress to the user's selected provider is permitted unconditionally — the app can't function without reaching its provider, so that traffic is never gated.
+2. **`_PermitGateway()` is the default (Null Object).** With no policy configured, the gateway permits all egress. Gating is additive and opt-in: call sites run unchanged, and stricter gateways are added without modifying them (Open/Closed).
+3. **Gate the generation path only.** The provider probe/health-check path is excluded — probes run before a policy context exists and aren't user-driven egress.
+4. **`net:provider` granularity is a known limit.** The scope is coarse (provider egress as a whole, not per-host/endpoint). Finer granularity is deferred and documented, not silently assumed.
 
 ### Consequences
-- **Positive:** The generation path has a single mediation point (complete mediation) without blocking the provider traffic the app depends on.
-- **Positive:** The Null Object default keeps first-run and unconfigured installs working; gating stays opt-in and extensible.
-- **Positive:** Excluding the probe path keeps availability checks simple and policy-free.
-- **Negative:** `net:provider` granularity is coarse — a compromised or misbehaving module reaching the provider host cannot be gated more narrowly under the current scope.
-- **Negative:** Always-granting provider egress is a deliberate trust assumption about provider traffic that a stricter model might later revisit.
-- **Neutral:** The policy unblocks #106; the gate's enforcement code lands there, not in this ADR.
+- **Positive:** The generation path has a single mediation point without blocking the provider traffic the app depends on; the Null Object default keeps first-run and unconfigured installs working; excluding probes keeps availability checks policy-free.
+- **Negative:** Coarse `net:provider` granularity — a misbehaving module reaching the provider host can't be gated more narrowly yet; always-granting provider egress is a deliberate trust assumption a stricter model might revisit.
+- **Neutral:** The enforcement code lives in #106, not this ADR — now landed (merged via PR #115).
 
 ### Alternatives Considered
+- **Gate `net:provider` like any other egress** — rejected: a misconfiguration or deny-by-default would break the app's core function; cost outweighs the marginal control at this scope.
+- **Deny-by-default gateway** — rejected: breaks first run and contradicts the additive/opt-in model; a Null Object default is safer and OCP-friendly.
+- **Gate every path, including probes** — rejected: probes predate any policy context and aren't user-driven; gating them adds complexity with no security benefit.
 
-1. **Gate `net:provider` like any other egress**
-   - Subject the provider traffic to the same policy checks.
-   - **Rejected:** a misconfiguration or deny-by-default would break the app's core function (reaching its provider); the cost outweighs the marginal control given the coarse scope.
-
-2. **Deny-by-default gateway**
-   - Block all egress unless explicitly permitted.
-   - **Rejected:** breaks first run and unconfigured installs and contradicts the additive/opt-in model; a Null Object default is safer and OCP-friendly.
-
-3. **Gate every path, including probes**
-   - Apply the gate to health-check/probe traffic as well.
-   - **Rejected:** probes run before a policy context exists and are not user-driven egress; gating them adds complexity with no security benefit.
-
-### Related Decisions
-- Unblocks #106 (Complete Mediation — wire the generation path through the network gate).
-- Grounded in Saltzer & Schroeder (1975) complete mediation, the Null Object pattern, and the Open/Closed Principle (SOLID).
-- Governs the egress `NetworkGateway` (named as infrastructure, not a pedal, per ADR-007).
+### Related
+- Implemented by #106 — generation path wired through the gate, merged via PR #115. (The `NetworkGateway` itself merged earlier in #102.)
+- Grounded in Saltzer & Schroeder (1975) complete mediation, the Null Object pattern, and the Open/Closed Principle.
+- Governs the egress `NetworkGateway` (infrastructure, not a pedal, per ADR-007).
 
 ---
 
 ## ADR-009: Module Organization Scheme
 
-**Status:** Proposed
-
-**Date:** June 2026
-
+**Status:** Accepted · **Date:** June 2026
 **Builds on:** ADR-004 (Two-Tier Module System)
-
-**Extended by:** ADR-010 (The Writer Module and Markdown Rendering)
+**Extended by:** ADR-010 (Writer Module)
 
 ### Context
+The module layer carries two organizational schemes at once.
 
-The module layer currently carries two organizational schemes at the same time.
+- **Flat modules.** Top-level files under `modules/` — `pedal_markdownOutput.py`, `pedal_conversationHistory.py`, `pedal_webAccess.py`, `pedal_connectedAccounts.py` — each a `BaseModule` subclass. Only `pedal_markdownOutput` is wired (`app.py`, for export); a sweep of all 38 modules finds no importer for the other three, so they are effectively dead code.
+- **A registry/runner plug-in scheme.** `registry.py` (`ModuleRegistry`) scans `modules/global/` and `modules/user/` for folders carrying a `module.json` manifest and a `module.py`, separating global modules (built-in, always on) from user modules (enable/disable, gated by an `INVALID`/`RUNNABLE_UNVERIFIED`/`VERIFIED` state machine). `runner.py` (`ModuleRunner`) is its execution half: it dispatches `execute(module_name, function_name, parameters, caller_module)` and enforces isolation (`ModuleIsolationError` — a user module may not call another) — the runtime seam for the untrusted-module sandbox.
 
-1. **Flat modules.** Top-level files under `src/signal_chain/modules/` — `pedal_markdownOutput.py`, `pedal_conversationHistory.py`, `pedal_webAccess.py`, `pedal_connectedAccounts.py` — each a `BaseModule` subclass. Only one is actually wired: `app.py` imports and instantiates `pedal_markdownOutput` (for export). The other three are referenced nowhere outside their own files — a sweep of the whole package (38 modules) finds no importer — so they are effectively dead code.
-2. **A registry / runner plug-in scheme.** `registry.py` (`ModuleRegistry`) scans `modules/global/` and `modules/user/` for module folders, each carrying a `module.json` manifest and a `module.py`, separating global modules (built-in, always enabled) from user modules (custom, enable/disable, gated by an `INVALID` / `RUNNABLE_UNVERIFIED` / `VERIFIED` state machine). `runner.py` (`ModuleRunner`) is the execution half of the same scheme: it dispatches `execute(module_name, function_name, parameters, caller_module)` and enforces isolation — a user module may not directly call another user module (`ModuleIsolationError`) — the runtime seam for the untrusted-module sandbox work.
-
-Both `ModuleRegistry` and `ModuleRunner` are built but not wired in: each is referenced only in its own file, so the composition root reaches neither. The only folder-style module that exists is `modules/global/conversation_history/` — and `conversation_history` also exists as the (dead) flat `pedal_conversationHistory.py`, so the same concept is represented in both schemes. A third disconnect sits on top: the pedalboard UI's six pedals are lightweight `PedalModule` data objects in `PedalboardViewModel` (id + enabled flag + LED), not the `BaseModule` pedal classes and not connected to them.
+Neither `ModuleRegistry` nor `ModuleRunner` is wired in — each is referenced only in its own file. The only folder-style module is `modules/global/conversation_history/`, and `conversation_history` *also* exists as the dead flat `pedal_conversationHistory.py`, so one concept lives in both schemes. On top of that, the pedalboard UI's six pedals are lightweight `PedalModule` data objects in `PedalboardViewModel` (id + enabled + LED), not the `BaseModule` classes and not connected to them.
 
 ### Decision Drivers
-
-- **Information hiding / modular decomposition** — Parnas (1972). Decompose a system by isolating the design decisions likely to change and hiding each behind a module interface, rather than by processing steps.
-- **Microkernel / plug-in architecture** — Richards, *Software Architecture Patterns* (2015; 2nd ed. 2022). A minimal core plus plug-in modules registered through a plug-in registry; a natural fit for product applications with pluggable, versioned features. This is precisely the shape `registry.py` and `runner.py` already sketch.
+- **Information hiding** — Parnas (1972). Decompose by isolating the design decisions likely to change behind module interfaces, not by processing steps.
+- **Microkernel / plug-in architecture** — Richards (2015; 2nd ed. 2022). A minimal core plus plug-ins registered through a registry — the shape `registry.py` and `runner.py` already sketch.
 
 ### Decision
-
-Adopt the registry / microkernel plug-in scheme (`registry.py` + `runner.py` + `modules/global/` + `modules/user/` + `module.json` + the `BaseModule` contract) as the single module organization, and wire it into the composition root. It is the concrete implementation of ADR-004's two-tier (global/user) policy. Flat `pedal_*.py` modules migrate to it incrementally, one per ticket; the three dead flat pedals (`pedal_conversationHistory`, `pedal_webAccess`, `pedal_connectedAccounts`) are removed or folded into folder modules rather than carried forward.
+Adopt the registry/microkernel scheme (`registry.py` + `runner.py` + `modules/global/` + `modules/user/` + `module.json` + the `BaseModule` contract) as the single module organization, and wire it into the composition root. It is the concrete implementation of ADR-004's two-tier policy. Flat `pedal_*.py` modules migrate incrementally, one per ticket; the three dead flat pedals are removed or folded into folder modules rather than carried forward.
 
 ### Consequences
-
-- **Positive:** One coherent module model; the dual-scheme ambiguity resolves as the migration proceeds and the layout becomes uniform.
-- **Positive:** Plug-in extensibility — new modules register through the scheme rather than being wired by hand.
-- **Negative:** Migration is incremental work; the module layout stays mixed until it completes.
-- **Neutral:** The microkernel's usual trade-off — the core can become a dependency bottleneck — applies but is minor at this scale.
+- **Positive:** One coherent module model; plug-in extensibility — new modules register rather than being hand-wired.
+- **Negative:** Migration is incremental; the layout stays mixed until it completes.
+- **Neutral:** The microkernel's usual core-bottleneck trade-off applies but is minor at this scale.
 
 ### Alternatives Considered
-
-1. **Status quo** — keep both schemes side by side.
-   - **Rejected:** leaves the fragmentation and does nothing for the "organize all modules" goal.
-2. **Big-bang reorganization** of every module at once.
-   - **Rejected:** high risk and against incremental discipline; migration can proceed module by module.
+- **Status quo (both schemes)** — rejected: leaves the fragmentation and does nothing for the goal.
+- **Big-bang reorganization** — rejected: high risk and against incremental discipline; migrate module by module.
 
 ### Open Questions / Follow-ups
 
-- **Registry/runner wiring & pedal cleanup.** Wiring `ModuleRegistry` and `ModuleRunner` into the composition root, migrating the one live flat pedal (`pedal_markdownOutput`), and deleting the three dead ones, are separate follow-up tickets.
+#### Open questions (awaiting a decision)
+
+**Q1 — User-module isolation enforcement.** *(latent — surfaced during this normalization; promote or strike)*
+- *Question:* How is the two-tier policy's isolation actually enforced for untrusted user modules? ADR-004 names an "optional AI security check"; `ModuleRunner` raises `ModuleIsolationError` to stop one user module calling another; neither is wired, and OS-level sandboxing is unbuilt.
+- *Options:* the runtime `ModuleIsolationError` seam alone (in-process, trust-the-import); an OS-level sandbox (process/permission isolation); or a structural-plus-AI validation gate at load time (ADR-004's check).
+- *Decided by:* when the first real user module ships, or a security pass is scheduled — not before.
+
+#### Follow-ups (decided, awaiting a tick)
+
+- **Registry/runner wiring.** Wire `ModuleRegistry` and `ModuleRunner` into the composition root. Blocks ADR-010 Q3 (the `execute()` dispatch binding) — once `writer` registers as a module, that mapping is concrete.
+- **Pedal cleanup.** Migrate the one live flat pedal (`pedal_markdownOutput`) into the folder scheme; remove the three dead flat pedals (`pedal_conversationHistory`, `pedal_webAccess`, `pedal_connectedAccounts`) or fold them into folder modules. One per ticket, never a sweep.
 
 ### References
-
-- Parnas, D. L. (1972). *On the Criteria To Be Used in Decomposing Systems into Modules.* Communications of the ACM, 15(12), 1053–1058.
-- Richards, M. (2015; 2nd ed. 2022). *Software Architecture Patterns.* O'Reilly Media. (Microkernel / plug-in architecture.)
+- Parnas, D. L. (1972). *On the Criteria To Be Used in Decomposing Systems into Modules.* CACM, 15(12), 1053–1058.
+- Richards, M. (2015; 2nd ed. 2022). *Software Architecture Patterns.* O'Reilly. (Microkernel / plug-in.)
 
 ---
 
 ## ADR-010: The Writer Module and Markdown Rendering
 
-**Status:** Accepted
-
-**Date:** June 2026
-
+**Status:** Accepted · **Date:** June 2026
 **Builds on:** ADR-001 (MVVM / Humble View), ADR-009 (Module Organization Scheme)
 
 ### Context
+Markdown handling is split across three places with no shared home:
+- display rendering sits inline in `views/conversation_view.py`;
+- fenced-block handling is buried inside the `markdown`-library call there;
+- markdown file export lives in `pedal_markdownOutput`.
 
-Markdown handling is fragmented across three places that share no home: display rendering lives inline in `views/conversation_view.py`; fenced-block handling is implicit inside the `markdown`-library call made there; and markdown file export lives in `pedal_markdownOutput` (a `BaseModule` exposing a `write_file` function). The view holding render logic also contradicts its own docstring ("zero business logic") and the Humble-View principle from ADR-001.
+The view holding render logic also breaks its own docstring ("zero business logic") and the Humble-View rule from ADR-001.
 
-This fragmentation surfaced concretely while building per-message rendering (#129): prose renders correctly when the markdown pedal is on, but a markdown document the model returns inside a fenced block tagged `markdown` is shown as a verbatim code block (which is correct CommonMark) rather than rendered. Inspection of real output revealed a compounding complication: the markdown document itself embeds a code fence — a `markdown`-tagged block wrapping a `python`-tagged block, both using three backticks. Because CommonMark closes a fence at the first run of backticks of equal-or-greater length, the outer block terminates at the inner fence's bare-backtick terminator and everything after it mis-renders. No single component owns the decision "how is fenced output rendered?"
+The gap showed up while building per-message rendering (#129): prose renders fine with the markdown pedal on, but a markdown document the model returns **inside a fence tagged `markdown`** shows as a verbatim code block instead of rendering. Worse, that document often embeds its own code fence — a `markdown` block wrapping a `python` block, both with three backticks. CommonMark closes a fence at the first run of equal-or-greater backticks, so the outer block ends early at the inner fence and everything after it mis-renders. No component owns the question: **how is fenced output rendered?**
 
 ### Decision Drivers
-
-- **Humble View / Presentation Model** — Fowler (2004); Gossman's MVVM (2005). The view should be passive, with presentation logic held outside it for testability. `conversation_view`'s own docstring states "zero business logic," yet it currently holds render logic. This aligns with ADR-001 and the Humble Object already used for providers.
-- **Single Responsibility** — Martin (2003), which descends from Parnas and from cohesion: a module should have one reason to change. Markdown rendering currently has three places that change for the same reason.
-- **Coupling & cohesion** — Stevens, Myers & Constantine (1974). Functional cohesion is the strongest form; logical cohesion — grouping things merely because they are the same "kind" — is weak. A single module that switches between markdown/code/other by a flag would be logically cohesive; a thin dispatcher delegating to separately-cohesive per-type handlers is stronger.
-- **Open/Closed Principle** — Meyer (1988). Adding a new handler later should mean registering it, not editing the dispatcher.
-- **YAGNI** — Beck/Jeffries (Extreme Programming), with Fowler's refinement that YAGNI governs presumptive features, not the effort to make software easier to modify. Building the structure now is fine; building unused modes and handlers now is not.
+- **Humble View** — Fowler (2004), Gossman (2005). The view should be passive; presentation logic lives outside it for testability. Matches ADR-001 and the Humble Object used for providers.
+- **Single Responsibility** — Martin (2003). One reason to change; markdown rendering currently has three.
+- **Cohesion over flags** — Stevens, Myers & Constantine (1974). A module that flag-switches between markdown/code/other is weakly (logically) cohesive; a thin dispatcher delegating to per-type handlers is stronger.
+- **Open/Closed** — Meyer (1988). Adding a handler should mean registering it, not editing the dispatcher.
+- **YAGNI** — Beck/Jeffries; Fowler (2015). Build the structure now; don't build unused modes and handlers now.
 
 ### Decision
 
-1. **The `writer` module.** Introduce a `writer` plug-in module (under the ADR-009 scheme) that owns the rendered output of fenced content. It is a thin dispatcher over per-type handlers (`writer.<type>`) with per-mode functions, so new types and modes are added without modifying the core (Open/Closed).
-2. **First application — relocate markdown rendering.** Implement markdown rendering under `writer.markdown`, relocating the render logic out of `views/conversation_view.py` (restoring the Humble View). `writer.markdown` calls the existing `render_markdown` routine from #129 — that work is **relocated, not rolled back**.
-3. **Rendering is pedal-driven, carried by a per-message flag.** The markdown pedal's state decides whether output renders or stays plain. The per-message `render_markdown` boolean on `ConversationMessage` carries that decision and is **frozen at generation time**; the pedal sets its value at generation. Pedal-driven and per-message are *not* opposites — the pedal drives the value, the per-message flag freezes it, and the writer's per-message render mode (`.message`) consumes it. *(This restates, in one voice, what the combined record split across "per-message rendering" and "the per-message → pedal-driven reversal of #129," which read as a contradiction. It is one mechanism.)*
-4. **Fence behavior (intentional departure from CommonMark).** When the markdown pedal is on: a fence whose language tag is `markdown`/`md` has its contents rendered as markdown; a fence tagged as a programming language (`python`, `bash`, …) stays verbatim; an untagged fence stays verbatim. This deliberately diverges from strict CommonMark (which renders every fence verbatim) because the tool exists to display the markdown the model returns, and models commonly deliver a markdown document inside a `markdown`-tagged fence. That document may itself contain code fences of the same delimiter length, so extracting the outer block's contents cannot rely on scanning for the next bare run of three backticks — nor on an off-the-shelf CommonMark parser, which mis-closes equal-length nested fences. This ADR fixes the dispatch rule; the nesting-aware extraction mechanism, and whether nested blocks are handled or scoped out of a first cut, are implementation choices deferred to the `writer.markdown` tickets and pinned by their tests.
-5. **Deferred (YAGNI).** A global-override render mode (`.super`) and non-markdown handlers (`writer.python`, …) are not built now. The structure leaves room for them; each is added test-first when actually needed.
-6. **Naming.** Disambiguate the `render_markdown` flag (the per-message boolean stamped at generation) from the render routine; give them distinct names in the implementation.
-7. **Out of scope.** Foldable/collapsible headers. `QTextEdit` renders static HTML and cannot collapse sections; that would require a different display widget (e.g. `QWebEngineView`) and is a separate decision if ever pursued.
+**1. A `writer` module with an always-on core.**
+Introduce a `writer` plug-in module (ADR-009 scheme) that owns how fenced output is rendered. Its core is a thin dispatcher: handlers register into it under a tag, and it routes each fence to the matching handler. `writer.core` is the module's structural floor — always on, never pedal-gated. It owns fence-boundary detection and the **clean monospace exit**: a fence's content is rebuilt from the lines *between* the delimiters, with no trailing blank line. The core depends on no handler and no pedal.
+
+**2. First job: relocate markdown rendering — as a segmenter.**
+Move markdown rendering out of `conversation_view` into `writer.markdown` (restoring the Humble View). The core splits a message and routes the pieces:
+- prose and `markdown`/`md` fences → `writer.markdown` (rendered as markdown);
+- programming-language and untagged fences → the core's monospace fallback.
+
+So **code fences never pass through the markdown library** — which is exactly why code blocks get the clean exit. The `render_markdown` routine from #129 is reused per-segment (prose and `md` content), not over the whole message. Relocated, not rolled back.
+
+**3. Rendering is pedal-driven, frozen per message.**
+The markdown pedal decides whether output renders or stays plain. Its state is captured into the `render_markdown` boolean on `ConversationMessage` at generation time and frozen there; the writer's `.message` mode consumes that frozen value. (Pedal-driven and per-message are one mechanism, not opposites: the pedal sets the value, the message freezes it.)
+
+**4. Fence rule — a deliberate departure from CommonMark.**
+With the markdown pedal on:
+- `markdown`/`md` fence → contents rendered as markdown;
+- programming-language fence (`python`, `bash`, …) → verbatim;
+- untagged fence → verbatim.
+
+Strict CommonMark renders every fence verbatim. We diverge because the tool exists to *display the markdown the model returns*, and models commonly wrap that markdown in a `markdown` fence. Since that block may contain same-length code fences, the unwrap can't just scan for the next bare three backticks, and an off-the-shelf CommonMark parser mis-closes it. This ADR fixes the **rule**; the nesting-aware extraction **mechanism** is deferred to the `writer.markdown` tickets and pinned by their tests.
+
+**5. Deferred (YAGNI).** A global-override mode (`.super`) and non-markdown handlers (`writer.python`, …) are not built now. The structure leaves room; each is added test-first when needed.
+
+**6. Naming.** Give the `render_markdown` flag and the render routine distinct names so they aren't confused.
+
+**7. Out of scope.** Collapsible headers — `QTextEdit` renders static HTML and can't collapse sections; that needs a different widget and a separate decision.
 
 ### Consequences
-
-- **Positive:** One cohesive home for "how fenced output renders," hidden behind `writer`'s interface; the view becomes humble again, and render logic becomes unit-testable in isolation.
-- **Positive:** New content types and modes are additive; separate handlers in separate files enable parallel work.
-- **Negative:** `writer` must reliably tell markdown fences from code fences, which depends on the model's fence tagging (see Open Questions).
-- **Negative:** Markdown documents routinely embed code fences; with equal-length backticks the outer block's boundary is ambiguous to a standard parser, so the unwrap must be nesting-aware — or nested blocks must be explicitly scoped out of a first cut.
-- **Negative:** The fence-rendering behavior departs from CommonMark; intentional, but it must stay documented so it is not mistaken for a defect.
-- **Neutral:** Implementation lands in separate tickets; this ADR commits to direction, not code. The relocation (first application) is in progress; the fence dispatch follows.
+- One home for "how fenced output renders," behind the `writer` interface; the view is humble again; render logic is unit-testable in isolation.
+- New types and modes are additive — separate handlers in separate files, parallel-friendly.
+- The clean code-block exit is a property of the composition (code skips the markdown library), not a patch.
+- The core must reliably tell markdown fences from code fences — depends on the model's tagging (see Open Questions).
+- Same-length embedded fences make the outer boundary ambiguous to a standard parser, so the unwrap must be nesting-aware (or nested blocks scoped out of a first cut).
+- The fence behavior departs from CommonMark on purpose — it must stay documented so it's not read as a bug.
 
 ### Alternatives Considered
-
-1. **Status quo** — keep markdown logic in the view.
-   - **Rejected:** leaves the fragmentation and the Humble-View violation.
-2. **Narrow fix only** — unwrap markdown fences inside `conversation_view`.
-   - **Rejected:** fixes the visible bug but deepens the violation (more logic in the view) and ignores the scheme split.
+- **Status quo** (markdown logic stays in the view) — rejected: keeps the fragmentation and the Humble-View violation.
+- **Narrow fix** (unwrap markdown fences inside `conversation_view`) — rejected: fixes the symptom, deepens the violation.
+- **Whole-message rendering** (`writer.markdown` reruns #129 over the entire message) — rejected: code fences would re-enter the markdown library, bringing back the trailing-blank exit and sidelining the core. The segmenter (Decision 2) was chosen instead.
 
 ### Open Questions / Follow-ups
 
-- **Fence tagging (evidence in hand, with a caveat).** The fence rule assumes the model tags markdown documents with a `markdown`/`md` info string. Real output does tag the document `markdown`, so the signal exists. Caveat: that conversation's stored model metadata read `provider: ollama` / empty `model_id`, which did not match the Gemini selection shown in the app — confirm the behavior on a reply known to come from Gemini, and that it holds consistently. An untagged fence still carries no signal to separate markdown from code.
-- **Nested fences.** A `markdown`-tagged block can wrap a same-length code fence. Decide the handling at implementation time, driven by the tester tick's fence cases: track nesting (treat a language-tagged fence line as an opener and a bare three-backtick line as closing the innermost open fence) or scope nested blocks out of the first cut. The nesting heuristic works for well-tagged output but breaks if a code block is opened with a bare fence or a fence is left unclosed.
-- **Dispatch mapping.** How `writer.<type>.<mode>` maps onto `BaseModule.execute(function_name, parameters, …)` is to be settled in the implementation ticket.
+Two kinds of item live here. **Open questions** are forks awaiting a decision — each names its options and what will settle them. **Follow-ups** are work already decided, awaiting a tick.
+
+#### Open questions (awaiting a decision)
+
+**Q1 — Fence-tagging reliability.**
+- *Question:* Does the model reliably wrap a returned markdown document in a `markdown`/`md` fence, so the segmenter can tell markdown from code by tag?
+- *Check:* Confirm on a reply known to be Gemini. The earlier sample can't confirm it — its stored metadata read `provider: ollama` / empty `model_id`, contradicting the Gemini selection shown.
+- *Blocked by:* the provider/`model_id` data-integrity bug (its own ticket). Until that's fixed or a fresh unambiguous reply is captured, no sample can be trusted to confirm the tag.
+- *Bounded, not open — the untagged case:* an untagged fence gives no signal, so it falls to the monospace default (renders verbatim — the status quo). Worst case is an untagged markdown document showing as code; never a crash or data loss. That default already lives in the core (Decision 1).
+
+**Q2 — Nested-fence boundary (the parsing exit).**
+- *Question:* How does `writer.markdown` find the outer fence's end when a `markdown` block wraps a same-length code fence? This is the *parsing* half of "clean exit"; Decision 2 settled the *rendering* half (composition), not this.
+- *Options:* **(A) track nesting** — a language-tagged fence line opens a frame, a bare three-backtick line closes the innermost open frame; or **(B) scope nesting out of the first cut** — v1 handles only non-nested markdown fences; nesting comes in a later tick.
+- *Decided by:* the tester tick's cases — whether real output produces nested same-length fences often enough to force (A) in v1, or whether (B) covers the common case.
+- *(A) must encode as test cases:* the heuristic breaks if a code block opens with a bare (untagged) fence, or is left unclosed.
+- *Same mechanism, same tick:* tolerance for a closing fence trailed by whitespace — the core's close-match is currently the naive exact bare-fence match only.
+- *Resolves in:* the `writer.markdown` tester tock (precedes the relocation builder tick).
+
+**Q3 — Dispatch binding.**
+- *Question:* How does `writer.<type>.<mode>` bind onto `BaseModule.execute(function_name, parameters, …)` under ADR-009? Composition is settled (Decision 2); only the call-signature mapping is open.
+- *Blocked by:* the ADR-009 registry/runner wiring (see ADR-009 follow-ups) — once `writer` registers as a module, the `execute()` mapping is concrete.
+
+#### Follow-ups (decided, awaiting a tick)
+
+- **The relocation itself** — build `writer.markdown` as the Decision 2 segmenter; the work that closes #142's output gap. Tester tock → builder tick, gated on this ADR edit landing.
+- **`_render_prose` HTML-escaping** — deferred in #140 until usage patterns are clearer; revisit when the relocation exercises prose paths.
+- **Retire superseded issues** — #126 and #129 fold into `writer.markdown`; close on relocation merge.
 
 ### References
-
-- Stevens, W. P., Myers, G. J., & Constantine, L. L. (1974). *Structured Design.* IBM Systems Journal, 13(2), 115–139.
-- Meyer, B. (1988). *Object-Oriented Software Construction.* Prentice Hall. (Open/Closed Principle.)
-- Martin, R. C. (2003). *Agile Software Development: Principles, Patterns, and Practices.* Prentice Hall. (Single Responsibility Principle.)
-- Fowler, M. (2004). *Presentation Model.* martinfowler.com.
-- Gossman, J. (2005). *Introduction to Model/View/ViewModel pattern for building WPF apps.*
-- Beck, K., & Jeffries, R. *Extreme Programming* (YAGNI); Fowler, M. (2015). *Yagni.* martinfowler.com.
-
----
+- Stevens, Myers & Constantine (1974). *Structured Design.* IBM Systems Journal, 13(2), 115–139.
+- Meyer (1988). *Object-Oriented Software Construction.* Prentice Hall. (Open/Closed.)
+- Martin (2003). *Agile Software Development.* Prentice Hall. (Single Responsibility.)
+- Fowler (2004). *Presentation Model.* martinfowler.com.
+- Gossman (2005). *Introduction to Model/View/ViewModel.*
+- Beck & Jeffries. *Extreme Programming* (YAGNI); Fowler (2015). *Yagni.* martinfowler.com.
