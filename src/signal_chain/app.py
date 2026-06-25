@@ -120,7 +120,7 @@ class Application:
 
         # ViewModel — gateway reads live pedalboard state at authorize() time
         gateway = NetworkGateway(self._main_window._pedalboard_vm)
-        self._vm = ConversationViewModel(provider=provider, gateway=gateway)  # type: ignore[arg-type]
+        self._vm = ConversationViewModel(provider=provider, gateway=gateway, pedalboard=self._main_window._pedalboard_vm)  # type: ignore[arg-type]
         self._conversation = Conversation.create(provider=active_name, model_id=model_id)
         self._vm.set_conversation(self._conversation)
 
@@ -174,8 +174,6 @@ class Application:
     def _on_generation_complete(self) -> None:
         if self._conversation is None or self._vm is None or self._conv_dir is None:
             return
-        if self._vm.response_text:
-            self._conversation.add_message(role="assistant", content=self._vm.response_text)
         if not self._conversation.metadata.title:
             user_msgs = [m for m in self._conversation.messages if m.role == "user"]
             if user_msgs:
@@ -207,9 +205,7 @@ class Application:
                 self._conversation = conv
                 if self._vm is not None:
                     self._vm.set_conversation(conv)
-                self._main_window.conversation_view.show_conversation(
-                    [(m.role, m.content) for m in conv.messages]
-                )
+                self._main_window.conversation_view.show_conversation(conv.messages)
                 return
 
     def _refresh_conversation_list(self) -> None:
