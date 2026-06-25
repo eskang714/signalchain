@@ -17,27 +17,28 @@ CONTRACT (all xfail until #129 builder tock lands):
   - The generation pipeline stamps render_markdown = pedalboard.is_enabled("markdown")
     at completion time.
 
-FLAGS (builder must confirm or amend):
+CONTRACT DECISIONS (decided — ticket #152):
 
-  FLAG-A  Stamp location.
-          Where is render_markdown set on the completed message?
-          Option 1 (VM): ConversationViewModel._on_complete() reads pedalboard state,
-            passes it to Conversation.add_message() — VM needs a pedalboard kwarg.
-          Option 2 (view): ConversationView._on_generation_complete() stamps the entry
-            it appends to _display_messages — view needs a pedalboard reference.
-          Option 3 (app): Application._on_generation_complete() passes the pedal state
-            to add_message() — already has self._main_window._pedalboard_vm.
-          Builder's call — do NOT decide here.
+  FLAG-A  Stamp location: DECIDED — ViewModel (Option 1).
+          ConversationViewModel gains a pedalboard= constructor argument.
+          The stamp is applied in _on_complete:
+            render_markdown = pedalboard.is_enabled("markdown")
+          No pedalboard wired / module absent → False (falsy default).
+          Builder owns the mechanism (moving the message-append into
+          _on_complete, the per-message setter shape, wiring the pedalboard
+          arg into integration-test call sites) — but this decision is fixed.
 
-  FLAG-B  Per-message data shape in show_conversation / _display_messages.
-          Currently show_conversation takes list[tuple[str, str]].
-          Options:
-            (a) list[tuple[str, str, bool]] — 3-tuple; minimal change
-            (b) list[ConversationMessage] — pass model objects directly
-            (c) list[dict] — generic dict with role/content/render_markdown
-          View tests below pass ConversationMessage objects (option b).
-          If builder chooses a different shape, adjust view tests accordingly.
-          Builder's call — do NOT decide here.
+  FLAG-B  Data shape: DECIDED — list[ConversationMessage] (Option b).
+          show_conversation takes list[ConversationMessage];
+          _display_messages stores the same. Tests below already assume
+          this shape — no adjustment needed when the builder lands it.
+
+  Stamp value: on → render_markdown=True; off → False; no pedalboard /
+          module absent → False (falsy).
+
+  Loader default: a stored message without render_markdown loads as True
+          (historical fidelity — pre-stamp messages were generated in the
+          all-markdown era; Elk's decision, ticket #130).
 
 HTML assertions use asterisk presence/absence rather than tag names.
 Qt's toHtml() normalises <strong> to font-weight spans but never
@@ -444,12 +445,12 @@ class TestHumbleViewDelegation:
     def test_conversation_view_delegates_rendering_to_writer(self):
         """conversation_view.py must not import the markdown library.
 
-        Today _render_all_messages() does `import markdown as md_lib` — a Humble-View
-        violation (ADR-001/ADR-010). Once the builder relocates rendering to
-        writer.markdown the import disappears and this test passes.
+        Asserts the post-relocation invariant (ADR-001 Humble View / ADR-010):
+        rendering belongs in writer.markdown; conversation_view must not import
+        the markdown library directly. The relocation landed in #148/#151.
 
         Source read via importlib so the path is correct regardless of install layout.
-        xfail today: `import markdown as md_lib` is present → assertion fails.
+        This test passes — it is a regression guard, not a red contract.
         """
         import importlib.util
         import re
