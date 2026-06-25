@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from signal_chain.modules.writer import render_message as _render_message
 from signal_chain.viewmodels.conversation import ConversationViewModel
 
 
@@ -170,9 +171,9 @@ pre {
   border-radius: 4px;
   overflow-x: auto;
   margin: 6px 0;
-  line-height: 1.25;
+  line-height: 1.0;
 }
-pre code { background: none; padding: 0; line-height: 1.25; }
+pre code { background: none; padding: 0; line-height: 1.0; }
 table {
   border-collapse: collapse;
   width: 100%;
@@ -190,43 +191,24 @@ blockquote {
   padding-left: 12px;
   opacity: 0.8;
 }
-hr { border: none; border-top: 1px solid rgba(128,128,128,0.3); }
+.msg { border-bottom: 1px solid rgba(128,128,128,0.3); padding-bottom: 8px; margin-bottom: 8px; }
 </style>
 """
 
     def _render_all_messages(self) -> None:
-        """Rebuild the display: user messages as escaped text, assistant as Markdown HTML."""
-        import markdown as md_lib
-
+        """Rebuild the display: user messages as escaped text, assistant via writer."""
         parts: list[str] = []
         for role, content in self._display_messages:
             if role == "assistant":
-                try:
-                    body = md_lib.markdown(
-                        content,
-                        extensions=[
-                            "fenced_code",
-                            "tables",
-                            "codehilite",
-                            "nl2br",
-                            "sane_lists",
-                        ],
-                    )
-                except Exception:
-                    escaped = (
-                        content.replace("&", "&amp;")
-                        .replace("<", "&lt;")
-                        .replace(">", "&gt;")
-                    )
-                    body = f"<pre>{escaped}</pre>"
-                parts.append(f"<p><b>Assistant:</b></p>{body}<hr/>")
+                body = _render_message(content, markdown_on=True)
+                parts.append(f"<div class='msg'><p><b>Assistant:</b></p>{body}</div>")
             else:
                 escaped = (
                     content.replace("&", "&amp;")
                     .replace("<", "&lt;")
                     .replace(">", "&gt;")
                 )
-                parts.append(f"<p><b>You:</b> {escaped}</p>")
+                parts.append(f"<div class='msg'><p><b>You:</b> {escaped}</p></div>")
         full_html = (
             f"<html><head>{self._CSS}</head>"
             f"<body>{''.join(parts)}</body></html>"
