@@ -80,7 +80,6 @@ class _FakeProvider:
 
 class TestConversationMessageModel:
 
-    @_xfail
     def test_render_markdown_true_round_trips_through_json(self, tmp_path):
         """render_markdown=True must survive a save/load cycle."""
         from signal_chain.models.conversation import (
@@ -107,7 +106,6 @@ class TestConversationMessageModel:
             "render_markdown=True must survive JSON serialisation and load"
         )
 
-    @_xfail
     def test_render_markdown_false_round_trips_through_json(self, tmp_path):
         """render_markdown=False must survive a save/load cycle."""
         from signal_chain.models.conversation import (
@@ -134,7 +132,6 @@ class TestConversationMessageModel:
             "render_markdown=False must survive JSON serialisation and load"
         )
 
-    @_xfail
     def test_missing_render_markdown_defaults_to_markdown_on(self, tmp_path):
         """JSON without render_markdown must load with render_markdown=True (markdown-on default).
 
@@ -177,7 +174,6 @@ class TestConversationMessageModel:
 
 class TestViewPerMessageRendering:
 
-    @_xfail
     def test_message_with_render_markdown_true_consumes_asterisks(self, qtbot):
         """A message with render_markdown=True must be rendered as HTML — asterisks consumed."""
         from signal_chain.models.conversation import ConversationMessage
@@ -202,7 +198,6 @@ class TestViewPerMessageRendering:
             "**bold** must not appear literally in toHtml() output (FLAG-B)"
         )
 
-    @_xfail
     def test_message_with_render_markdown_false_preserves_asterisks(self, qtbot):
         """A message with render_markdown=False must display as plain text — asterisks present."""
         from signal_chain.models.conversation import ConversationMessage
@@ -226,7 +221,6 @@ class TestViewPerMessageRendering:
             "* is not HTML-special and must survive setHtml/toHtml (FLAG-B)"
         )
 
-    @_xfail
     def test_mixed_render_markdown_flags_render_per_message(self, qtbot):
         """A conversation with mixed flags must render each message in its own mode,
         not one global mode for the whole conversation."""
@@ -267,7 +261,6 @@ class TestViewPerMessageRendering:
 
 class TestMainWindowIntegration:
 
-    @_xfail
     def test_pedal_stamps_at_generation_and_toggle_is_frozen(self, qtbot):
         """Full integration: pedal state at generation drives the stamp; toggling
         afterwards does NOT re-render already-displayed messages.
@@ -303,7 +296,7 @@ class TestMainWindowIntegration:
         window = MainWindow()
         qtbot.addWidget(window)
 
-        vm = ConversationViewModel(provider=_FakeProvider())
+        vm = ConversationViewModel(provider=_FakeProvider(), pedalboard=window._pedalboard_vm)
         conv = Conversation.create(provider="test", model_id="test-model")
         vm.set_conversation(conv)
         window.conversation_view.set_viewmodel(vm)
@@ -353,7 +346,7 @@ class TestMainWindowIntegration:
         window = MainWindow()
         qtbot.addWidget(window)
 
-        vm = ConversationViewModel(provider=_FakeProvider())
+        vm = ConversationViewModel(provider=_FakeProvider(), pedalboard=window._pedalboard_vm)
         conv = Conversation.create(provider="test", model_id="test-model")
         vm.set_conversation(conv)
         window.conversation_view.set_viewmodel(vm)
@@ -374,7 +367,6 @@ class TestMainWindowIntegration:
             "pedal ON at generation → markdown rendered → asterisks must be consumed"
         )
 
-    @_xfail
     def test_pedal_off_at_generation_renders_plain(self, qtbot):
         """Pedal OFF at generation → message renders as plain text, asterisks preserved.
 
@@ -390,7 +382,7 @@ class TestMainWindowIntegration:
         window = MainWindow()
         qtbot.addWidget(window)
 
-        vm = ConversationViewModel(provider=_FakeProvider())
+        vm = ConversationViewModel(provider=_FakeProvider(), pedalboard=window._pedalboard_vm)
         conv = Conversation.create(provider="test", model_id="test-model")
         vm.set_conversation(conv)
         window.conversation_view.set_viewmodel(vm)

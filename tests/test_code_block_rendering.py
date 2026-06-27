@@ -51,6 +51,8 @@ FLAGS for the builder (do NOT decide by implementing):
 import pytest
 from PyQt6.QtGui import QFontMetricsF
 
+from signal_chain.models.conversation import ConversationMessage
+
 # ---------------------------------------------------------------------------
 # Document-block helpers (no imports of unimplemented code)
 # ---------------------------------------------------------------------------
@@ -156,7 +158,7 @@ class TestCodeBlockLayout:
         view.resize(800, 600)
         qtbot.addWidget(view)
         view.show()
-        view.show_conversation([("assistant", MSG)])
+        view.show_conversation([ConversationMessage(id="", role="assistant", content=MSG, timestamp="", render_markdown=True)])
         qtbot.wait(50)
 
         all_blocks = _walk_blocks(view)
@@ -206,7 +208,7 @@ class TestCodeBlockLayout:
         view.resize(800, 600)
         qtbot.addWidget(view)
         view.show()
-        view.show_conversation([("assistant", MSG)])
+        view.show_conversation([ConversationMessage(id="", role="assistant", content=MSG, timestamp="", render_markdown=True)])
         qtbot.wait(50)
 
         all_blocks = _walk_blocks(view)

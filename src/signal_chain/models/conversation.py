@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, fields as dc_fields
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +22,7 @@ class ConversationMessage:
     role: str
     content: str
     timestamp: str
+    render_markdown: bool = True
 
 
 @dataclass
@@ -53,13 +54,14 @@ class Conversation:
             metadata=ConversationMetadata(title="", tags=[], module_usage={}),
         )
 
-    def add_message(self, role: str, content: str) -> None:
+    def add_message(self, role: str, content: str, render_markdown: bool = True) -> None:
         self.messages.append(
             ConversationMessage(
                 id=f"msg_{len(self.messages):04d}",
                 role=role,
                 content=content,
                 timestamp=datetime.now(timezone.utc).isoformat(),
+                render_markdown=render_markdown,
             )
         )
 
@@ -88,6 +90,7 @@ class ConversationLoader:
                     "role": m.role,
                     "content": m.content,
                     "timestamp": m.timestamp,
+                    "render_markdown": m.render_markdown,
                 }
                 for m in conv.messages
             ],
@@ -109,7 +112,11 @@ class ConversationLoader:
     @staticmethod
     def _from_dict(data: dict) -> Conversation:
         model = ModelRef(**data["model"])
-        messages = [ConversationMessage(**m) for m in data.get("messages", [])]
+        _msg_keys = {f.name for f in dc_fields(ConversationMessage)}
+        messages = [
+            ConversationMessage(**{k: v for k, v in m.items() if k in _msg_keys})
+            for m in data.get("messages", [])
+        ]
         raw_meta = data.get("metadata", {})
         metadata = ConversationMetadata(
             title=raw_meta.get("title", ""),

@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from signal_chain.models.conversation import ConversationMessage
 from signal_chain.modules.writer import render_message as _render_message
 from signal_chain.viewmodels.conversation import ConversationViewModel
 
@@ -29,7 +30,7 @@ class ConversationView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._vm: ConversationViewModel | None = None
-        self._display_messages: list[tuple[str, str]] = []  # (role, content)
+        self._display_messages: list[ConversationMessage] = []
         self._current_response: str = ""
 
         # Toolbar row
@@ -140,8 +141,8 @@ class ConversationView(QWidget):
         self._current_response = ""
         self._display.clear()
 
-    def show_conversation(self, messages: list[tuple[str, str]]) -> None:
-        """Display a loaded conversation with Markdown rendering for assistant messages."""
+    def show_conversation(self, messages: list[ConversationMessage]) -> None:
+        """Display a loaded conversation; each message rendered per its render_markdown flag."""
         self._display_messages = list(messages)
         self._current_response = ""
         self._render_all_messages()
@@ -196,15 +197,15 @@ blockquote {
 """
 
     def _render_all_messages(self) -> None:
-        """Rebuild the display: user messages as escaped text, assistant via writer."""
+        """Rebuild the display; each assistant message rendered per its render_markdown flag."""
         parts: list[str] = []
-        for role, content in self._display_messages:
-            if role == "assistant":
-                body = _render_message(content, markdown_on=True)
+        for msg in self._display_messages:
+            if msg.role == "assistant":
+                body = _render_message(msg.content, markdown_on=msg.render_markdown)
                 parts.append(f"<div class='msg'><p><b>Assistant:</b></p>{body}</div>")
             else:
                 escaped = (
-                    content.replace("&", "&amp;")
+                    msg.content.replace("&", "&amp;")
                     .replace("<", "&lt;")
                     .replace(">", "&gt;")
                 )
@@ -224,7 +225,9 @@ blockquote {
         text = self._input.toPlainText().strip()
         if not text:
             return
-        self._display_messages.append(("user", text))
+        self._display_messages.append(
+            ConversationMessage(id="", role="user", content=text, timestamp="", render_markdown=False)
+        )
         self._display.append(f"You: {text}")
         self._input.clear()
         self.message_submitted.emit(text)
@@ -292,7 +295,20 @@ blockquote {
 
     def _on_generation_complete(self) -> None:
         if self._current_response:
-            self._display_messages.append(("assistant", self._current_response))
+            if (
+                self._vm is not None
+                and self._vm._conversation is not None
+                and self._vm._conversation.messages
+                and self._vm._conversation.messages[-1].role == "assistant"
+            ):
+                self._display_messages.append(self._vm._conversation.messages[-1])
+            else:
+                self._display_messages.append(
+                    ConversationMessage(
+                        id="", role="assistant", content=self._current_response,
+                        timestamp="", render_markdown=False,
+                    )
+                )
         self._current_response = ""
         self._render_all_messages()
         self._send_btn.setEnabled(True)

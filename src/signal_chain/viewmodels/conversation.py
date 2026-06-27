@@ -11,6 +11,7 @@ from signal_chain.viewmodels.base import BaseViewModel
 
 if TYPE_CHECKING:
     from signal_chain.models.conversation import Conversation
+    from signal_chain.viewmodels.pedalboard import PedalboardViewModel
 
 
 class _GenerationThread(QThread):
@@ -72,10 +73,16 @@ class ConversationViewModel(BaseViewModel):
     # and an OS-level abort (SIGABRT).
     _live_threads: ClassVar[set[_GenerationThread]] = set()
 
-    def __init__(self, provider: BaseProvider, gateway: _PermitGateway = _PermitGateway()) -> None:
+    def __init__(
+        self,
+        provider: BaseProvider,
+        gateway: _PermitGateway = _PermitGateway(),
+        pedalboard: PedalboardViewModel | None = None,
+    ) -> None:
         super().__init__()
         self._provider = provider
         self._gateway = gateway
+        self._pedalboard = pedalboard
         self.is_generating: bool = False
         self.response_text: str = ""
         self.error_state: str = ""
@@ -148,6 +155,17 @@ class ConversationViewModel(BaseViewModel):
     def _on_complete(self) -> None:
         self.is_generating = False
         self._cleanup_thread()
+        if self._conversation is not None and self.response_text:
+            if self._pedalboard is not None:
+                module = self._pedalboard._by_id.get("markdown")
+                render_markdown = module.enabled if module is not None else False
+            else:
+                render_markdown = False
+            self._conversation.add_message(
+                role="assistant",
+                content=self.response_text,
+                render_markdown=render_markdown,
+            )
         self.generation_complete.emit()
 
     def _on_error(self, message: str) -> None:
